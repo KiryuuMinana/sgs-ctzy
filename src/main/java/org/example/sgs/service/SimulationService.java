@@ -280,6 +280,10 @@ public class SimulationService {
             restArea.add(targetCard);
             // 进入休整区时，乐不思蜀状态消失
             leBuSiShu.remove(cardId);
+            
+            // 移入休整区后，禁用撤回功能（防止状态冲突）
+            session.setCanUndo(false);
+            session.setLastDrawnCards(null);
         }
     }
 
@@ -301,6 +305,10 @@ public class SimulationService {
         if (targetCard != null) {
             restArea.remove(targetCard);
             field.add(targetCard);
+            
+            // 从休整区恢复后，禁用撤回功能（防止状态冲突）
+            session.setCanUndo(false);
+            session.setLastDrawnCards(null);
         }
     }
 
@@ -345,6 +353,10 @@ public class SimulationService {
         } else {
             leBuSiShu.add(cardId);
         }
+        
+        // 切换乐不思蜀后，禁用撤回功能（防止状态冲突）
+        session.setCanUndo(false);
+        session.setLastDrawnCards(null);
     }
 
     /**
