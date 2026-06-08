@@ -307,7 +307,7 @@
             height: 100%;
             border-radius: 8px;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             border: 2px solid;
             transition: transform 0.3s, box-shadow 0.3s;
         }
@@ -399,14 +399,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow: visible;
             position: relative;
+            margin-top: 15px; /* 调整小图标位置，向下移动约四分之一 */
         }
 
         .card-image-area img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
+            max-height: 100%;
+            object-fit: contain;
+            object-position: bottom center;
         }
 
         .card-image-placeholder {
@@ -700,21 +703,25 @@
             .app-title { font-size: 2em; letter-spacing: 4px; }
             .player-header { flex-direction: column; align-items: flex-start; }
             .general-card { width: 80px; height: 112px; }
-            .card-image-area { height: 55px; }
+            .card-image-area { height: 55px; margin-top: 12px; }
             .card-name { font-size: 0.9em; }
             .btn { padding: 8px 20px; font-size: 0.9em; }
             .cards-area { gap: 6px; }
             .battle-log { max-height: 120px; }
+            .skill-modal-image { min-height: 220px; }
+            .skill-modal-image img { max-height: 300px; }
         }
 
         @media (max-width: 480px) {
             .app-title { font-size: 1.6em; letter-spacing: 2px; }
             .general-card { width: 70px; height: 98px; }
-            .card-image-area { height: 48px; }
+            .card-image-area { height: 48px; margin-top: 10px; }
             .card-image-placeholder { font-size: 1.5em; }
             .card-name { font-size: 0.8em; }
             .player-stats { flex-direction: column; gap: 5px; }
             .battle-log { max-height: 80px; }
+            .skill-modal-image { min-height: 180px; }
+            .skill-modal-image img { max-height: 250px; }
         }
 
         /* ====== 势力图标 ====== */
@@ -1130,20 +1137,22 @@
         /* ====== 技能弹窗 ====== */
         .skill-modal-image {
             width: 100%;
-            height: 180px;
+            height: auto;
+            min-height: 280px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: rgba(0,0,0,0.3);
             border-radius: 8px;
             margin-bottom: 10px;
-            overflow: hidden;
+            overflow: visible;
         }
 
         .skill-modal-image img {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
+            max-height: 400px;
+            object-fit: contain;
         }
 
         .skill-modal-placeholder {

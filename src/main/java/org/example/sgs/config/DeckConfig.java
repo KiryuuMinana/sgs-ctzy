@@ -130,7 +130,7 @@ public class DeckConfig {
         String faction = deck.getFaction();
         String commanderId = deckId + "_commander_" + commanderName;
         GeneralCard commanderCard = new GeneralCard(commanderId, commanderName, faction,
-                imageConfig.getCardImagePath(commanderName), true);
+                imageConfig.getCardImagePath(deckId + "/" + commanderName), true);
         commanderCard.setSkillDescription(skillConfig.getSkillDescription(commanderName));
         commanderCard.setSkillImagePath(skillConfig.getSkillImagePath(commanderName));
         return commanderCard;
