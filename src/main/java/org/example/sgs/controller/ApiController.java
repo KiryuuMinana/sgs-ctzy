@@ -69,8 +69,8 @@ public class ApiController {
             response.put("message", "模拟开始");
             response.put("firstPlayerDeck", session.getFirstPlayerDeck().getName());
             response.put("secondPlayerDeck", session.getSecondPlayerDeck().getName());
-            response.put("firstPlayerCampSize", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size());
-            response.put("secondPlayerCampSize", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size());
+            response.put("firstPlayerCampSize", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size() + session.getFirstPlayerCampBottom().size());
+            response.put("secondPlayerCampSize", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size() + session.getSecondPlayerCampBottom().size());
             response.put("isFirstTurn", true);
             response.put("nextIsFirstPlayer", true);
             response.put("firstPlayerField", session.getFirstPlayerField());
@@ -81,7 +81,10 @@ public class ApiController {
             response.put("secondPlayerLeBuSiShu", session.getSecondPlayerLeBuSiShu());
             response.put("firstPlayerCampTop", session.getFirstPlayerCampTop());
             response.put("secondPlayerCampTop", session.getSecondPlayerCampTop());
+            response.put("firstPlayerCampBottom", session.getFirstPlayerCampBottom());
+            response.put("secondPlayerCampBottom", session.getSecondPlayerCampBottom());
             response.put("canUndo", false);
+            response.put("forcePlayerSpecified", false);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             Map<String, String> error = new HashMap<>();
@@ -91,7 +94,7 @@ public class ApiController {
     }
 
     /**
-     * 下一步（抽卡），支持自定义抽卡数量
+     * 下一步（抽卡），支持自定义抽卡数量和手动指定玩家
      */
     @PostMapping("/simulation/next")
     public ResponseEntity<?> nextStep(@RequestBody(required = false) Map<String, Object> request,
@@ -105,15 +108,21 @@ public class ApiController {
         }
 
         Integer drawCount = null;
-        if (request != null && request.get("drawCount") != null) {
-            try {
-                drawCount = Integer.parseInt(request.get("drawCount").toString());
-            } catch (NumberFormatException e) {
-                // ignore, will use default
+        String forcePlayer = null;
+        if (request != null) {
+            if (request.get("drawCount") != null) {
+                try {
+                    drawCount = Integer.parseInt(request.get("drawCount").toString());
+                } catch (NumberFormatException e) {
+                    // ignore, will use default
+                }
+            }
+            if (request.get("forcePlayer") != null) {
+                forcePlayer = request.get("forcePlayer").toString();
             }
         }
 
-        DrawResult result = simulationService.nextStep(session, drawCount);
+        DrawResult result = simulationService.nextStep(session, drawCount, forcePlayer);
         return ResponseEntity.ok(result);
     }
 
@@ -135,8 +144,8 @@ public class ApiController {
         state.put("nextIsFirstPlayer", session.isNextIsFirstPlayer());
         state.put("isFirstTurn", session.isFirstTurn());
         state.put("finished", session.isFinished());
-        state.put("firstPlayerCampRemaining", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size());
-        state.put("secondPlayerCampRemaining", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size());
+        state.put("firstPlayerCampRemaining", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size() + session.getFirstPlayerCampBottom().size());
+        state.put("secondPlayerCampRemaining", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size() + session.getSecondPlayerCampBottom().size());
         state.put("firstPlayerField", session.getFirstPlayerField());
         state.put("secondPlayerField", session.getSecondPlayerField());
         state.put("firstPlayerRestArea", session.getFirstPlayerRestArea());
@@ -145,9 +154,12 @@ public class ApiController {
         state.put("secondPlayerLeBuSiShu", session.getSecondPlayerLeBuSiShu());
         state.put("firstPlayerCampTop", session.getFirstPlayerCampTop());
         state.put("secondPlayerCampTop", session.getSecondPlayerCampTop());
+        state.put("firstPlayerCampBottom", session.getFirstPlayerCampBottom());
+        state.put("secondPlayerCampBottom", session.getSecondPlayerCampBottom());
         state.put("firstPlayerDeck", session.getFirstPlayerDeck().getName());
         state.put("secondPlayerDeck", session.getSecondPlayerDeck().getName());
         state.put("canUndo", session.isCanUndo());
+        state.put("forcePlayerSpecified", session.isForcePlayerSpecified());
         return ResponseEntity.ok(state);
     }
 
@@ -245,6 +257,25 @@ public class ApiController {
     }
 
     /**
+     * 将战场武将放回军营底部
+     */
+    @PostMapping("/simulation/card/camp-bottom")
+    public ResponseEntity<?> moveCardToCampBottom(@RequestBody Map<String, String> request,
+                                                   HttpSession httpSession) {
+        GameSession session = (GameSession) httpSession.getAttribute("gameSession");
+        if (session == null) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "请先开始模拟"));
+        }
+        String player = request.get("player");
+        String cardId = request.get("cardId");
+        if (player == null || cardId == null) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "缺少参数"));
+        }
+        simulationService.moveToCampBottom(session, player, cardId);
+        return ResponseEntity.ok(getStateMap(session));
+    }
+
+    /**
      * 获取武将技能描述
      */
     @GetMapping("/card/skill")
@@ -276,8 +307,8 @@ public class ApiController {
         state.put("nextIsFirstPlayer", session.isNextIsFirstPlayer());
         state.put("isFirstTurn", session.isFirstTurn());
         state.put("finished", session.isFinished());
-        state.put("firstPlayerCampRemaining", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size());
-        state.put("secondPlayerCampRemaining", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size());
+        state.put("firstPlayerCampRemaining", session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size() + session.getFirstPlayerCampBottom().size());
+        state.put("secondPlayerCampRemaining", session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size() + session.getSecondPlayerCampBottom().size());
         state.put("firstPlayerField", session.getFirstPlayerField());
         state.put("secondPlayerField", session.getSecondPlayerField());
         state.put("firstPlayerRestArea", session.getFirstPlayerRestArea());
@@ -286,6 +317,8 @@ public class ApiController {
         state.put("secondPlayerLeBuSiShu", session.getSecondPlayerLeBuSiShu());
         state.put("firstPlayerCampTop", session.getFirstPlayerCampTop());
         state.put("secondPlayerCampTop", session.getSecondPlayerCampTop());
+        state.put("firstPlayerCampBottom", session.getFirstPlayerCampBottom());
+        state.put("secondPlayerCampBottom", session.getSecondPlayerCampBottom());
         state.put("firstPlayerDeck", session.getFirstPlayerDeck().getName());
         state.put("secondPlayerDeck", session.getSecondPlayerDeck().getName());
         state.put("canUndo", session.isCanUndo());

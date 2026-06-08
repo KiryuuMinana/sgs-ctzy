@@ -56,6 +56,12 @@ public class DrawResult {
     /** 后手玩家军营顶部武将列表 */
     private List<GeneralCard> secondPlayerCampTop;
 
+    /** 先手玩家军营底部武将列表 */
+    private List<GeneralCard> firstPlayerCampBottom;
+
+    /** 后手玩家军营底部武将列表 */
+    private List<GeneralCard> secondPlayerCampBottom;
+
     public DrawResult() {
     }
 
@@ -187,5 +193,21 @@ public class DrawResult {
 
     public void setSecondPlayerCampTop(List<GeneralCard> secondPlayerCampTop) {
         this.secondPlayerCampTop = secondPlayerCampTop;
+    }
+
+    public List<GeneralCard> getFirstPlayerCampBottom() {
+        return firstPlayerCampBottom;
+    }
+
+    public void setFirstPlayerCampBottom(List<GeneralCard> firstPlayerCampBottom) {
+        this.firstPlayerCampBottom = firstPlayerCampBottom;
+    }
+
+    public List<GeneralCard> getSecondPlayerCampBottom() {
+        return secondPlayerCampBottom;
+    }
+
+    public void setSecondPlayerCampBottom(List<GeneralCard> secondPlayerCampBottom) {
+        this.secondPlayerCampBottom = secondPlayerCampBottom;
     }
 }

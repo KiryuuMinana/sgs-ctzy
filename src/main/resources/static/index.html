@@ -910,6 +910,25 @@
             transform: scale(1.15);
         }
 
+        .card-btn-campbottom {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(217, 150, 74, 0.75);
+            color: #fff;
+            font-size: 12px;
+            line-height: 28px;
+            text-align: center;
+            cursor: pointer;
+            margin: 2px 4px 0 0;
+            transition: all 0.2s;
+            border: 2px solid rgba(217, 150, 74, 0.5);
+        }
+
+        .card-btn-campbottom:hover {
+            background: #d9964a;
+            transform: scale(1.15);
+        }
+
         /* 乐不思蜀状态标记 */
         .lebusishu-indicator {
             position: absolute;
@@ -1199,6 +1218,35 @@
         .draw-count-label {
             white-space: nowrap;
         }
+
+        .force-player-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .force-player-select {
+            height: 36px;
+            padding: 0 12px;
+            background: rgba(26, 26, 46, 0.9);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .force-player-select:hover {
+            border-color: var(--gold);
+        }
+
+        .force-player-select:focus {
+            outline: none;
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(212, 168, 67, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -1265,6 +1313,13 @@
             <span class="draw-count-label">抽</span>
             <input type="number" class="draw-count-input" id="drawCountInput" min="1" max="4" value="2">
             <span class="draw-count-label">张</span>
+        </div>
+        <div class="force-player-wrapper" id="forcePlayerWrapper" style="display:none;">
+            <select class="force-player-select" id="forcePlayerSelect">
+                <option value="">默认轮流</option>
+                <option value="first">先手抽卡</option>
+                <option value="second">后手抽卡</option>
+            </select>
         </div>
         <button class="btn btn-undo" id="btnUndo" disabled>撤回上一次抽卡</button>
         <button class="btn btn-reset" id="btnReset" disabled>重置</button>
@@ -1448,6 +1503,9 @@
             // show draw count input, default to 1 for first turn
             document.getElementById('drawCountWrapper').style.display = 'flex';
             document.getElementById('drawCountInput').value = 1;
+            // show force player select
+            document.getElementById('forcePlayerWrapper').style.display = 'flex';
+            document.getElementById('forcePlayerSelect').value = '';
         
             // 显示统计
             document.getElementById('firstPlayerStats').style.display = 'flex';
@@ -1483,10 +1541,16 @@
     
         document.getElementById('btnNext').disabled = true;
     
+        // 获取forcePlayer参数
+        const forcePlayer = document.getElementById('forcePlayerSelect').value;
+    
         fetch('/api/simulation/next', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ drawCount: parseInt(document.getElementById('drawCountInput').value) || 2 })
+            body: JSON.stringify({ 
+                drawCount: parseInt(document.getElementById('drawCountInput').value) || 2,
+                forcePlayer: forcePlayer || null
+            })
         })
         .then(res => res.json())
         .then(data => {
@@ -1512,7 +1576,7 @@
             setTimeout(() => {
                 renderDrawnCards(player, drawnCards);
     
-                addBattleLog(data.turn, player, drawnCards, data.finished);
+                addBattleLog(data.turn, player, 'draw', drawnCards, { finished: data.finished });
     
                 updateCampDisplay('first', data.firstPlayerCampRemaining, data.firstPlayerField.length);
                 updateCampDisplay('second', data.secondPlayerCampRemaining, data.secondPlayerField.length);
@@ -1535,11 +1599,14 @@
                     document.getElementById('btnNext').disabled = true;
                     document.getElementById('btnUndo').disabled = true;
                     document.getElementById('drawCountWrapper').style.display = 'none';
+                    document.getElementById('forcePlayerWrapper').style.display = 'none';
                     showToast(data.message, 'warning');
                 } else {
                     document.getElementById('btnNext').disabled = false;
                     // reset draw count to 2 after each draw
                     document.getElementById('drawCountInput').value = 2;
+                    // reset force player to default
+                    document.getElementById('forcePlayerSelect').value = '';
                     const playerLabel = player === 'first' ? '先手' : '后手';
                     const cardNames = drawnCards.map(c => c.name).join('、');
                     showToast(playerLabel + '上阵：' + cardNames, 'info');
@@ -1571,6 +1638,7 @@
             document.getElementById('firstDeckSelect').disabled = false;
             document.getElementById('secondDeckSelect').disabled = false;
             document.getElementById('drawCountWrapper').style.display = 'none';
+            document.getElementById('forcePlayerWrapper').style.display = 'none';
     
             document.getElementById('firstFieldCards').innerHTML = '';
             document.getElementById('secondFieldCards').innerHTML = '';
@@ -1726,10 +1794,20 @@
             e.stopPropagation();
             moveToCampTop(player, cardData.id);
         };
+
+        const btnCampBottom = document.createElement('button');
+        btnCampBottom.className = 'card-btn-campbottom';
+        btnCampBottom.textContent = '\u2193';
+        btnCampBottom.title = '\u653E\u56DE\u519B\u8425\u5E95';
+        btnCampBottom.onclick = function(e) {
+            e.stopPropagation();
+            moveToCampBottom(player, cardData.id);
+        };
     
         hoverOverlay.appendChild(btnX);
         hoverOverlay.appendChild(btnLebu);
         hoverOverlay.appendChild(btnCampTop);
+        hoverOverlay.appendChild(btnCampBottom);
     
         cardEl.appendChild(inner);
         cardEl.appendChild(hoverOverlay);
@@ -1737,7 +1815,7 @@
         // 【新增】点击武将卡显示技能弹窗
         cardEl.addEventListener('click', function(e) {
             // 如果点击的是操作按钮，不触发技能弹窗
-            if (e.target.classList.contains('card-btn-x') || e.target.classList.contains('card-btn-lebusishu') || e.target.classList.contains('card-btn-camptop')) return;
+            if (e.target.classList.contains('card-btn-x') || e.target.classList.contains('card-btn-lebusishu') || e.target.classList.contains('card-btn-camptop') || e.target.classList.contains('card-btn-campbottom')) return;
             showSkillPopup(cardData);
         });
     
@@ -1750,7 +1828,7 @@
     }
 
     // ====== 战斗日志 ======
-    function addBattleLog(turn, player, drawnCards, finished) {
+    function addBattleLog(turn, player, action, details, extra) {
         const logContent = document.getElementById('logContent');
         const entry = document.createElement('div');
         entry.className = 'log-entry';
@@ -1760,18 +1838,39 @@
 
         const factionMap = { '魏': 'log-faction-wei', '蜀': 'log-faction-shu', '吴': 'log-faction-wu', '群': 'log-faction-qun' };
 
-        let cardsHtml = drawnCards.map(c => {
-            const factionClass = factionMap[c.faction] || '';
-            return '<span class="' + factionClass + '">' + c.name + '</span>';
-        }).join('、');
+        let actionText = '';
+        if (action === 'draw') {
+            // 上阵
+            let cardsHtml = details.map(c => {
+                const factionClass = factionMap[c.faction] || '';
+                return '<span class="' + factionClass + '">' + c.name + '</span>';
+            }).join('、');
+            actionText = '上阵：<span class="log-cards">' + cardsHtml + '</span>';
+            if (extra && extra.finished) {
+                actionText += ' <span style="color: #d94a4a;">— 武将不足，模拟结束</span>';
+            }
+        } else if (action === 'undo') {
+            actionText = '<span style="color: #8888cc;">撤回上一次抽卡</span>';
+        } else if (action === 'campTop') {
+            const factionClass = factionMap[details.faction] || '';
+            actionText = '放回军营顶：<span class="' + factionClass + '">' + details.name + '</span>';
+        } else if (action === 'campBottom') {
+            const factionClass = factionMap[details.faction] || '';
+            actionText = '放回军营底：<span class="' + factionClass + '">' + details.name + '</span>';
+        } else if (action === 'lebusishu') {
+            const factionClass = factionMap[details.faction] || '';
+            actionText = (details.added ? '贴上' : '移除') + '乐不思蜀：<span class="' + factionClass + '">' + details.name + '</span>';
+        } else if (action === 'rest') {
+            const factionClass = factionMap[details.faction] || '';
+            actionText = '置入休整区：<span class="' + factionClass + '">' + details.name + '</span>';
+        } else if (action === 'restore') {
+            const factionClass = factionMap[details.faction] || '';
+            actionText = '恢复至战场：<span class="' + factionClass + '">' + details.name + '</span>';
+        }
 
         entry.innerHTML = '<span class="log-turn">[第' + turn + '回合]</span> ' +
             '<span class="' + playerClass + '">' + playerLabel + '</span>' +
-            ' 上阵：<span class="log-cards">' + cardsHtml + '</span>';
-
-        if (finished) {
-            entry.innerHTML += ' <span style="color: #d94a4a;">— 武将不足，模拟结束</span>';
-        }
+            ' ' + actionText;
 
         logContent.appendChild(entry);
 
@@ -1869,6 +1968,9 @@
             // 同步渲染完整状态
             syncFullState(data);
 
+            // 记录战报
+            addBattleLog(data.turn, data.player, 'undo', null, null);
+
             showToast(data.message, 'info');
         })
         .catch(err => {
@@ -1878,6 +1980,10 @@
 
     // ====== 置入休整区 ======
     function moveToRestArea(player, cardId) {
+        const cardEl = document.querySelector('.general-card[data-card-id="' + cardId + '"]');
+        const cardName = cardEl ? cardEl.querySelector('.card-name').textContent : '';
+        const cardFaction = cardEl ? cardEl.querySelector('.card-faction-tag').textContent : '';
+        
         callCardApi('/api/simulation/card/rest', { player: player, cardId: cardId })
         .then(data => {
             if (data.error) {
@@ -1885,6 +1991,7 @@
                 return;
             }
             syncFullState(data);
+            addBattleLog(data.currentTurn, player, 'rest', { name: cardName, faction: cardFaction }, null);
             showToast('武将已置入休整区', 'info');
         })
         .catch(err => showToast('操作失败: ' + err.message, 'error'));
@@ -1892,6 +1999,10 @@
 
     // ====== 放回军营顶部 ======
     function moveToCampTop(player, cardId) {
+        const cardEl = document.querySelector('.general-card[data-card-id="' + cardId + '"]');
+        const cardName = cardEl ? cardEl.querySelector('.card-name').textContent : '';
+        const cardFaction = cardEl ? cardEl.querySelector('.card-faction-tag').textContent : '';
+        
         callCardApi('/api/simulation/card/camp-top', { player: player, cardId: cardId })
         .then(data => {
             if (data.error) {
@@ -1899,13 +2010,38 @@
                 return;
             }
             syncFullState(data);
+            addBattleLog(data.currentTurn, player, 'campTop', { name: cardName, faction: cardFaction }, null);
             showToast('武将已放回军营顶部', 'info');
+        })
+        .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+
+    // ====== 放回军营底部 ======
+    function moveToCampBottom(player, cardId) {
+        const cardEl = document.querySelector('.general-card[data-card-id="' + cardId + '"]');
+        const cardName = cardEl ? cardEl.querySelector('.card-name').textContent : '';
+        const cardFaction = cardEl ? cardEl.querySelector('.card-faction-tag').textContent : '';
+        
+        callCardApi('/api/simulation/card/camp-bottom', { player: player, cardId: cardId })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+            syncFullState(data);
+            addBattleLog(data.currentTurn, player, 'campBottom', { name: cardName, faction: cardFaction }, null);
+            showToast('武将已放回军营底部', 'info');
         })
         .catch(err => showToast('操作失败: ' + err.message, 'error'));
     }
 
     // ====== 从休整区恢复至战场 ======
     function restoreFromRestArea(player, cardId) {
+        const restArea = player === 'first' ? (currentGameState ? currentGameState.firstPlayerRestArea : []) : (currentGameState ? currentGameState.secondPlayerRestArea : []);
+        const card = restArea.find(c => c.id === cardId);
+        const cardName = card ? card.name : '';
+        const cardFaction = card ? card.faction : '';
+        
         callCardApi('/api/simulation/card/restore', { player: player, cardId: cardId })
         .then(data => {
             if (data.error) {
@@ -1913,6 +2049,7 @@
                 return;
             }
             syncFullState(data);
+            addBattleLog(data.currentTurn, player, 'restore', { name: cardName, faction: cardFaction }, null);
             showToast('武将已恢复至战场', 'success');
         })
         .catch(err => showToast('操作失败: ' + err.message, 'error'));
@@ -1920,6 +2057,11 @@
 
     // ====== 切换乐不思蜀 ======
     function toggleLeBuSiShu(player, cardId) {
+        const cardEl = document.querySelector('.general-card[data-card-id="' + cardId + '"]');
+        const cardName = cardEl ? cardEl.querySelector('.card-name').textContent : '';
+        const cardFaction = cardEl ? cardEl.querySelector('.card-faction-tag').textContent : '';
+        const hasLebu = cardEl ? cardEl.querySelector('.lebusishu-indicator') !== null : false;
+        
         callCardApi('/api/simulation/card/lebusishu', { player: player, cardId: cardId })
         .then(data => {
             if (data.error) {
@@ -1927,6 +2069,9 @@
                 return;
             }
             syncFullState(data);
+            // 切换前没有乐 -> 现在加了乐
+            const added = !hasLebu;
+            addBattleLog(data.currentTurn, player, 'lebusishu', { name: cardName, faction: cardFaction, added: added }, null);
             showToast('乐不思蜀状态已切换', 'info');
         })
         .catch(err => showToast('操作失败: ' + err.message, 'error'));

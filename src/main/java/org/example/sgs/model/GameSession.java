@@ -28,6 +28,12 @@ public class GameSession {
     /** 后手玩家军营顶部（放回军营顶的武将，LIFO栈） */
     private List<GeneralCard> secondPlayerCampTop;
 
+    /** 先手玩家军营底部（放回军营底的武将，最后才被抽出） */
+    private List<GeneralCard> firstPlayerCampBottom;
+
+    /** 后手玩家军营底部（放回军营底的武将，最后才被抽出） */
+    private List<GeneralCard> secondPlayerCampBottom;
+
     /** 先手玩家已上阵武将 */
     private List<GeneralCard> firstPlayerField;
 
@@ -51,6 +57,9 @@ public class GameSession {
 
     /** 上一次抽卡中来自campTop的武将ID集合（用于撤回时正确放回） */
     private Set<String> lastDrawnFromCampTopIds;
+
+    /** 上一次抽卡中来自campBottom的武将ID集合（用于撤回时正确放回） */
+    private Set<String> lastDrawnFromCampBottomIds;
 
     /** 上一次抽卡的玩家（"first"或"second"） */
     private String lastDrawPlayer;
@@ -76,6 +85,9 @@ public class GameSession {
     /** 模拟是否已结束 */
     private boolean finished;
 
+    /** 是否手动指定了抽卡玩家（抽卡后自动清除） */
+    private boolean forcePlayerSpecified = false;
+
     public GameSession() {
         this.firstPlayerField = new ArrayList<>();
         this.secondPlayerField = new ArrayList<>();
@@ -83,10 +95,13 @@ public class GameSession {
         this.secondPlayerRestArea = new ArrayList<>();
         this.firstPlayerCampTop = new ArrayList<>();
         this.secondPlayerCampTop = new ArrayList<>();
+        this.firstPlayerCampBottom = new ArrayList<>();
+        this.secondPlayerCampBottom = new ArrayList<>();
         this.firstPlayerLeBuSiShu = new HashSet<>();
         this.secondPlayerLeBuSiShu = new HashSet<>();
         this.lastDrawnCards = null;
         this.lastDrawnFromCampTopIds = null;
+        this.lastDrawnFromCampBottomIds = null;
         this.lastDrawPlayer = null;
         this.lastDrawWasFirstTurn = false;
         this.lastDrawTurn = 0;
@@ -95,6 +110,7 @@ public class GameSession {
         this.nextIsFirstPlayer = true;
         this.isFirstTurn = true;
         this.finished = false;
+        this.forcePlayerSpecified = false;
     }
 
     /** 初始化军营（深拷贝预组的卡牌） */
@@ -246,6 +262,22 @@ public class GameSession {
         this.secondPlayerCampTop = secondPlayerCampTop;
     }
 
+    public List<GeneralCard> getFirstPlayerCampBottom() {
+        return firstPlayerCampBottom;
+    }
+
+    public void setFirstPlayerCampBottom(List<GeneralCard> firstPlayerCampBottom) {
+        this.firstPlayerCampBottom = firstPlayerCampBottom;
+    }
+
+    public List<GeneralCard> getSecondPlayerCampBottom() {
+        return secondPlayerCampBottom;
+    }
+
+    public void setSecondPlayerCampBottom(List<GeneralCard> secondPlayerCampBottom) {
+        this.secondPlayerCampBottom = secondPlayerCampBottom;
+    }
+
     public List<GeneralCard> getLastDrawnCards() {
         return lastDrawnCards;
     }
@@ -260,6 +292,14 @@ public class GameSession {
 
     public void setLastDrawnFromCampTopIds(Set<String> lastDrawnFromCampTopIds) {
         this.lastDrawnFromCampTopIds = lastDrawnFromCampTopIds;
+    }
+
+    public Set<String> getLastDrawnFromCampBottomIds() {
+        return lastDrawnFromCampBottomIds;
+    }
+
+    public void setLastDrawnFromCampBottomIds(Set<String> lastDrawnFromCampBottomIds) {
+        this.lastDrawnFromCampBottomIds = lastDrawnFromCampBottomIds;
     }
 
     public String getLastDrawPlayer() {
@@ -292,5 +332,13 @@ public class GameSession {
 
     public void setCanUndo(boolean canUndo) {
         this.canUndo = canUndo;
+    }
+
+    public boolean isForcePlayerSpecified() {
+        return forcePlayerSpecified;
+    }
+
+    public void setForcePlayerSpecified(boolean forcePlayerSpecified) {
+        this.forcePlayerSpecified = forcePlayerSpecified;
     }
 }

@@ -68,8 +68,9 @@ public class SimulationService {
     /**
      * 执行下一步（抽卡）
      * 支持自定义抽卡数量，优先从军营顶部抽取
+     * 支持手动指定抽卡玩家（forcePlayer），抽卡后自动恢复轮流
      */
-    public DrawResult nextStep(GameSession session, Integer customDrawCount) {
+    public DrawResult nextStep(GameSession session, Integer customDrawCount, String forcePlayer) {
         DrawResult result = new DrawResult();
     
         if (session.isFinished()) {
@@ -79,9 +80,18 @@ public class SimulationService {
             return result;
         }
     
-        boolean isFirstPlayer = session.isNextIsFirstPlayer();
+        // 确定行动方：如果手动指定了玩家，则使用指定的玩家；否则使用nextIsFirstPlayer
+        boolean isFirstPlayer;
+        if (forcePlayer != null && !forcePlayer.isEmpty()) {
+            isFirstPlayer = "first".equals(forcePlayer);
+            // 手动指定后，标记为已指定，抽卡后会清除
+            session.setForcePlayerSpecified(true);
+        } else {
+            isFirstPlayer = session.isNextIsFirstPlayer();
+        }
         List<GeneralCard> camp = isFirstPlayer ? session.getFirstPlayerCamp() : session.getSecondPlayerCamp();
         List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
+        List<GeneralCard> campBottom = isFirstPlayer ? session.getFirstPlayerCampBottom() : session.getSecondPlayerCampBottom();
         List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
     
         // check both players field >5, xu shu exemption
@@ -104,8 +114,8 @@ public class SimulationService {
         result.setPlayer(isFirstPlayer ? "first" : "second");
         result.setTurn(session.getCurrentTurn());
     
-        // check if camp + campTop has enough generals
-        int totalAvailable = camp.size() + campTop.size();
+        // check if camp + campTop + campBottom has enough generals
+        int totalAvailable = camp.size() + campTop.size() + campBottom.size();
         if (totalAvailable == 0) {
             result.setFinished(true);
             result.setMessage("武将数不足，本次模拟结束");
@@ -129,29 +139,35 @@ public class SimulationService {
         // draw cards: if re-draw after undo, use same cards
         List<GeneralCard> drawn;
         Set<String> drawnFromCampTopIds = new HashSet<>();
+        Set<String> drawnFromCampBottomIds = new HashSet<>();
         if (session.getLastDrawnCards() != null && !session.isCanUndo()
                 && session.getLastDrawnCards().size() == actualDraw) {
             // re-draw after undo: use same cards (not random)
             drawn = new ArrayList<>(session.getLastDrawnCards());
-            // 恢复之前的 campTop 来源标记
+            // 恢复之前的 campTop/campBottom 来源标记
             if (session.getLastDrawnFromCampTopIds() != null) {
                 drawnFromCampTopIds = new HashSet<>(session.getLastDrawnFromCampTopIds());
             }
+            if (session.getLastDrawnFromCampBottomIds() != null) {
+                drawnFromCampBottomIds = new HashSet<>(session.getLastDrawnFromCampBottomIds());
+            }
         } else {
-            drawn = drawFromCampAndTop(camp, campTop, actualDraw, drawnFromCampTopIds);
+            drawn = drawFromCampTopBottom(camp, campTop, campBottom, actualDraw, drawnFromCampTopIds, drawnFromCampBottomIds);
         }
         result.setDrawnCards(drawn);
 
         // record undo info (save state before draw)
         session.setLastDrawnCards(new ArrayList<>(drawn));
         session.setLastDrawnFromCampTopIds(new HashSet<>(drawnFromCampTopIds));
+        session.setLastDrawnFromCampBottomIds(new HashSet<>(drawnFromCampBottomIds));
         session.setLastDrawPlayer(isFirstPlayer ? "first" : "second");
         session.setLastDrawWasFirstTurn(session.isFirstTurn());
         session.setLastDrawTurn(session.getCurrentTurn());
         session.setCanUndo(true);
     
-        // remove drawn from camp (campTop already removed in drawFromCampAndTop)
+        // remove drawn from camp/campBottom (campTop already removed in drawFromCampTopBottom)
         camp.removeAll(drawn);
+        campBottom.removeAll(drawn);
         field.addAll(drawn);
     
         // update turn state
@@ -159,8 +175,14 @@ public class SimulationService {
             session.setFirstTurn(false);
         }
     
-        // switch player
-        session.setNextIsFirstPlayer(!isFirstPlayer);
+        // switch player（只有在非手动指定时才切换）
+        if (!session.isForcePlayerSpecified()) {
+            session.setNextIsFirstPlayer(!isFirstPlayer);
+        } else {
+            // 手动指定后，清除标记并恢复轮流逻辑
+            session.setForcePlayerSpecified(false);
+            session.setNextIsFirstPlayer(!isFirstPlayer);
+        }
     
         if (!isFirstPlayer) {
             session.setCurrentTurn(session.getCurrentTurn() + 1);
@@ -188,19 +210,33 @@ public class SimulationService {
     
         List<GeneralCard> lastDrawn = session.getLastDrawnCards();
         Set<String> fromCampTopIds = session.getLastDrawnFromCampTopIds();
+        Set<String> fromCampBottomIds = session.getLastDrawnFromCampBottomIds();
         String lastPlayer = session.getLastDrawPlayer();
         boolean isFirstPlayer = "first".equals(lastPlayer);
     
         List<GeneralCard> camp = isFirstPlayer ? session.getFirstPlayerCamp() : session.getSecondPlayerCamp();
         List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
         List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
+        List<GeneralCard> campBottom = isFirstPlayer ? session.getFirstPlayerCampBottom() : session.getSecondPlayerCampBottom();
     
-        // 从field中移除这些卡
-        field.removeAll(lastDrawn);
-        // 区分放回：来自campTop的放回campTop，其他放回camp
+        // 从field中移除这些卡（只移除仍在field中的卡）
+        // 注意：如果卡牌已被移到campTop/campBottom/restArea，则不应再从field移除
+        List<GeneralCard> cardsToReturn = new ArrayList<>();
         for (GeneralCard card : lastDrawn) {
+            if (field.contains(card)) {
+                field.remove(card);
+                cardsToReturn.add(card);
+            }
+            // 如果卡牌不在field中，说明已经被移到其他地方（campTop/campBottom/restArea）
+            // 这种情况下不应该再次放回，避免重复添加
+        }
+        
+        // 区分放回：来自campTop的放回campTop，来自campBottom的放回campBottom，其他放回camp
+        for (GeneralCard card : cardsToReturn) {
             if (fromCampTopIds != null && fromCampTopIds.contains(card.getId())) {
                 campTop.add(card); // 放回campTop栈顶
+            } else if (fromCampBottomIds != null && fromCampBottomIds.contains(card.getId())) {
+                campBottom.add(card); // 放回campBottom末尾
             } else {
                 camp.add(card); // 放回军营
             }
@@ -312,6 +348,35 @@ public class SimulationService {
     }
 
     /**
+     * 将战场武将放回军营底部（最后才被抽出）
+     * 放回时移除乐不思蜀状态
+     */
+    public void moveToCampBottom(GameSession session, String player, String cardId) {
+        boolean isFirstPlayer = "first".equals(player);
+        List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
+        List<GeneralCard> campBottom = isFirstPlayer ? session.getFirstPlayerCampBottom() : session.getSecondPlayerCampBottom();
+        Set<String> leBuSiShu = isFirstPlayer ? session.getFirstPlayerLeBuSiShu() : session.getSecondPlayerLeBuSiShu();
+
+        GeneralCard targetCard = null;
+        for (GeneralCard card : field) {
+            if (card.getId().equals(cardId)) {
+                targetCard = card;
+                break;
+            }
+        }
+        if (targetCard != null) {
+            field.remove(targetCard);
+            campBottom.add(targetCard); // 放到末尾，最后才被抽出
+            leBuSiShu.remove(cardId); // remove lebusishu status
+
+            // 放回军营底后，禁用撤回功能（防止状态冲突）
+            session.setCanUndo(false);
+            // 清除 lastDrawnCards，确保下次抽卡使用 drawFromCampTopBottom 而不是重抽旧卡
+            session.setLastDrawnCards(null);
+        }
+    }
+
+    /**
      * Check if "Xu Shu" exists on either player's battlefield
      */
     private boolean hasXuShuOnField(GameSession session) {
@@ -325,13 +390,15 @@ public class SimulationService {
     }
 
     /**
-     * 从军营顶部+军营中抽取武将（优先从campTop栈顶抽取，再从camp随机抽取）
+     * 从军营顶部+军营+军营底部抽取武将
+     * 优先级：campTop(LIFO栈顶) → camp(随机) → campBottom(末尾，最后才抽)
      * @param drawnFromCampTopIds 用于记录本次抽卡中来自campTop的武将ID
+     * @param drawnFromCampBottomIds 用于记录本次抽卡中来自campBottom的武将ID
      */
-    private List<GeneralCard> drawFromCampAndTop(List<GeneralCard> camp, List<GeneralCard> campTop, int count, Set<String> drawnFromCampTopIds) {
+    private List<GeneralCard> drawFromCampTopBottom(List<GeneralCard> camp, List<GeneralCard> campTop, List<GeneralCard> campBottom, int count, Set<String> drawnFromCampTopIds, Set<String> drawnFromCampBottomIds) {
         List<GeneralCard> drawn = new ArrayList<>();
 
-        // first, draw from campTop (LIFO: pop from end)
+        // 1. first, draw from campTop (LIFO: pop from end)
         while (drawn.size() < count && !campTop.isEmpty()) {
             GeneralCard card = campTop.remove(campTop.size() - 1);
             drawn.add(card);
@@ -340,12 +407,25 @@ public class SimulationService {
             }
         }
 
-        // then, randomDraw from camp for remaining
+        // 2. then, randomDraw from camp for remaining
         int remaining = count - drawn.size();
         if (remaining > 0 && !camp.isEmpty()) {
             int actualRemaining = Math.min(remaining, camp.size());
             List<GeneralCard> randomDrawn = randomDraw(camp, actualRemaining);
             drawn.addAll(randomDrawn);
+            remaining = count - drawn.size();
+        }
+
+        // 3. finally, draw from campBottom (from end, last added last drawn)
+        if (remaining > 0 && !campBottom.isEmpty()) {
+            while (remaining > 0 && !campBottom.isEmpty()) {
+                GeneralCard card = campBottom.remove(campBottom.size() - 1);
+                drawn.add(card);
+                if (drawnFromCampBottomIds != null) {
+                    drawnFromCampBottomIds.add(card.getId());
+                }
+                remaining--;
+            }
         }
 
         return drawn;
@@ -371,8 +451,8 @@ public class SimulationService {
      * 填充结果中的状态信息
      */
     private void fillResultState(DrawResult result, GameSession session) {
-        result.setFirstPlayerCampRemaining(session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size());
-        result.setSecondPlayerCampRemaining(session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size());
+        result.setFirstPlayerCampRemaining(session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size() + session.getFirstPlayerCampBottom().size());
+        result.setSecondPlayerCampRemaining(session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size() + session.getSecondPlayerCampBottom().size());
         result.setFirstPlayerField(new ArrayList<>(session.getFirstPlayerField()));
         result.setSecondPlayerField(new ArrayList<>(session.getSecondPlayerField()));
         result.setFirstPlayerRestArea(new ArrayList<>(session.getFirstPlayerRestArea()));
@@ -381,6 +461,8 @@ public class SimulationService {
         result.setSecondPlayerLeBuSiShu(new HashSet<>(session.getSecondPlayerLeBuSiShu()));
         result.setFirstPlayerCampTop(new ArrayList<>(session.getFirstPlayerCampTop()));
         result.setSecondPlayerCampTop(new ArrayList<>(session.getSecondPlayerCampTop()));
+        result.setFirstPlayerCampBottom(new ArrayList<>(session.getFirstPlayerCampBottom()));
+        result.setSecondPlayerCampBottom(new ArrayList<>(session.getSecondPlayerCampBottom()));
         result.setCanUndo(session.isCanUndo());
     }
 }
