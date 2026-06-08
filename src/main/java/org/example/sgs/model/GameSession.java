@@ -49,6 +49,9 @@ public class GameSession {
     /** 上一次抽出的武将卡（用于撤回） */
     private List<GeneralCard> lastDrawnCards;
 
+    /** 上一次抽卡中来自campTop的武将ID集合（用于撤回时正确放回） */
+    private Set<String> lastDrawnFromCampTopIds;
+
     /** 上一次抽卡的玩家（"first"或"second"） */
     private String lastDrawPlayer;
 
@@ -83,6 +86,7 @@ public class GameSession {
         this.firstPlayerLeBuSiShu = new HashSet<>();
         this.secondPlayerLeBuSiShu = new HashSet<>();
         this.lastDrawnCards = null;
+        this.lastDrawnFromCampTopIds = null;
         this.lastDrawPlayer = null;
         this.lastDrawWasFirstTurn = false;
         this.lastDrawTurn = 0;
@@ -248,6 +252,14 @@ public class GameSession {
 
     public void setLastDrawnCards(List<GeneralCard> lastDrawnCards) {
         this.lastDrawnCards = lastDrawnCards;
+    }
+
+    public Set<String> getLastDrawnFromCampTopIds() {
+        return lastDrawnFromCampTopIds;
+    }
+
+    public void setLastDrawnFromCampTopIds(Set<String> lastDrawnFromCampTopIds) {
+        this.lastDrawnFromCampTopIds = lastDrawnFromCampTopIds;
     }
 
     public String getLastDrawPlayer() {

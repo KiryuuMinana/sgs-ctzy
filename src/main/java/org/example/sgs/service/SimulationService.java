@@ -128,17 +128,23 @@ public class SimulationService {
     
         // draw cards: if re-draw after undo, use same cards
         List<GeneralCard> drawn;
+        Set<String> drawnFromCampTopIds = new HashSet<>();
         if (session.getLastDrawnCards() != null && !session.isCanUndo()
                 && session.getLastDrawnCards().size() == actualDraw) {
             // re-draw after undo: use same cards (not random)
             drawn = new ArrayList<>(session.getLastDrawnCards());
+            // 恢复之前的 campTop 来源标记
+            if (session.getLastDrawnFromCampTopIds() != null) {
+                drawnFromCampTopIds = new HashSet<>(session.getLastDrawnFromCampTopIds());
+            }
         } else {
-            drawn = drawFromCampAndTop(camp, campTop, actualDraw);
+            drawn = drawFromCampAndTop(camp, campTop, actualDraw, drawnFromCampTopIds);
         }
         result.setDrawnCards(drawn);
 
         // record undo info (save state before draw)
         session.setLastDrawnCards(new ArrayList<>(drawn));
+        session.setLastDrawnFromCampTopIds(new HashSet<>(drawnFromCampTopIds));
         session.setLastDrawPlayer(isFirstPlayer ? "first" : "second");
         session.setLastDrawWasFirstTurn(session.isFirstTurn());
         session.setLastDrawTurn(session.getCurrentTurn());
@@ -167,38 +173,46 @@ public class SimulationService {
     /**
      * 撤回上一步抽卡
      * 将抽出的武将放回军营，恢复回合状态
-     * 注意：撤回后再次“下一步”时，抽出的是同一批武将（非随机重新抽）
+     * 注意：撤回后再次"下一步"时，抽出的是同一批武将（非随机重新抽）
+     * 增强：撤回时区分来自campTop和camp的卡，分别放回
      */
     public DrawResult undoLastStep(GameSession session) {
         DrawResult result = new DrawResult();
-
+    
         if (!session.isCanUndo() || session.getLastDrawnCards() == null) {
             result.setFinished(false);
             result.setMessage("无法撤回：没有可撤回的操作");
             fillResultState(result, session);
             return result;
         }
-
+    
         List<GeneralCard> lastDrawn = session.getLastDrawnCards();
+        Set<String> fromCampTopIds = session.getLastDrawnFromCampTopIds();
         String lastPlayer = session.getLastDrawPlayer();
         boolean isFirstPlayer = "first".equals(lastPlayer);
-
+    
         List<GeneralCard> camp = isFirstPlayer ? session.getFirstPlayerCamp() : session.getSecondPlayerCamp();
         List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
         List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
-
-        // remove drawn cards from field, campTop, then add back to camp
+    
+        // 从field中移除这些卡
         field.removeAll(lastDrawn);
-        campTop.removeAll(lastDrawn);
-        camp.addAll(lastDrawn);
-
+        // 区分放回：来自campTop的放回campTop，其他放回camp
+        for (GeneralCard card : lastDrawn) {
+            if (fromCampTopIds != null && fromCampTopIds.contains(card.getId())) {
+                campTop.add(card); // 放回campTop栈顶
+            } else {
+                camp.add(card); // 放回军营
+            }
+        }
+    
         // 恢复回合状态
         session.setNextIsFirstPlayer(isFirstPlayer);
         session.setFirstTurn(session.isLastDrawWasFirstTurn());
         session.setCurrentTurn(session.getLastDrawTurn());
         // 清除撤回标记，但保留lastDrawnCards（再次抽时使用同一批）
         session.setCanUndo(false);
-
+    
         result.setMessage("撤回成功：上次抽出的武将已返回军营");
         result.setPlayer(lastPlayer);
         result.setTurn(session.getCurrentTurn());
@@ -275,6 +289,11 @@ public class SimulationService {
             field.remove(targetCard);
             campTop.add(targetCard); // LIFO: add to end, draw from end
             leBuSiShu.remove(cardId); // remove lebusishu status
+
+            // 放回军营顶后，禁用撤回功能（防止状态冲突）
+            session.setCanUndo(false);
+            // 清除 lastDrawnCards，确保下次抽卡使用 drawFromCampAndTop 而不是重抽旧卡
+            session.setLastDrawnCards(null);
         }
     }
 
@@ -307,13 +326,18 @@ public class SimulationService {
 
     /**
      * 从军营顶部+军营中抽取武将（优先从campTop栈顶抽取，再从camp随机抽取）
+     * @param drawnFromCampTopIds 用于记录本次抽卡中来自campTop的武将ID
      */
-    private List<GeneralCard> drawFromCampAndTop(List<GeneralCard> camp, List<GeneralCard> campTop, int count) {
+    private List<GeneralCard> drawFromCampAndTop(List<GeneralCard> camp, List<GeneralCard> campTop, int count, Set<String> drawnFromCampTopIds) {
         List<GeneralCard> drawn = new ArrayList<>();
 
         // first, draw from campTop (LIFO: pop from end)
         while (drawn.size() < count && !campTop.isEmpty()) {
-            drawn.add(campTop.remove(campTop.size() - 1));
+            GeneralCard card = campTop.remove(campTop.size() - 1);
+            drawn.add(card);
+            if (drawnFromCampTopIds != null) {
+                drawnFromCampTopIds.add(card.getId());
+            }
         }
 
         // then, randomDraw from camp for remaining

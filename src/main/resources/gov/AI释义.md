@@ -29,12 +29,18 @@
 
 ### v1.2.0 - 放回军营顶+自定义抽卡数量 (2026-06-08)
 
-- 新增"放回军营顶部"功能：武将卡悬浮显示"\u2191"按钮，点击后放回军营顶部（LIFO栈，后进先出），下次抽卡必然先抽出
+- 新增"放回军营顶部"功能：武将卡悬浮显示"↑"按钮，点击后放回军营顶部（LIFO栈，后进先出），下次抽卡必然先抽出
 - 新增自定义抽卡数量："下一步"旁增加输入框(1-4)，默认2；抽卡后自动重置为2
 - 后端新增campTop(LIFO栈)机制，抽卡优先从campTop取出再从camp随机抽取
 - 新增API端点 POST /api/simulation/card/camp-top
 - 修改nextStep()接受customDrawCount参数
 - 撤回逻辑增强：undo时同时从campTop移除lastDrawnCards
+
+### v1.2.1 - Bug修复：放回军营顶抽卡逻辑+撤回联动 (2026-06-08)
+
+- 修复放回军营顶后抽卡不从campTop抽的bug：moveToCampTop()增加session.setCanUndo(false)和session.setLastDrawnCards(null)，防止撤回后重抽逻辑覆盖campTop抽卡
+- 修复撤回时campTop卡错误放回camp的bug：GameSession新增lastDrawnFromCampTopIds字段追踪上次抽卡中来自campTop的武将ID；undoLastStep()根据该字段将卡正确放回campTop或camp
+- 约束：点击放回军营顶后，撤回上一次抽卡按钮被禁用（canUndo=false）
 
 ---
 
@@ -46,7 +52,7 @@
 |---|---|---|
 | `GeneralCard` | 武将卡实体 | id格式: `{faction}_{name}_{index}`，faction为魏/蜀/吴/群；新增isCommander(主帅标记)、skillDescription(技能描述口子)、skillImagePath(技能图片口子) |
 | `PresetDeck` | 预组实体 | 包含卡牌列表，totalCount=卡牌数 |
-| `GameSession` | 对局会话状态 | 存储于HttpSession，含双方军营/军营顶部(LIFO栈)/战场/休整区/乐不思蜀/撤回数据/回合状态 |
+| `GameSession` | 对局会话状态 | 存储于HttpSession，含双方军营/军营顶部(LIFO栈)/战场/休整区/乐不思蜀/撤回数据/回合状态；新增lastDrawnFromCampTopIds追踪上次抽卡来源 |
 | `DrawResult` | 抽卡结果 | 含drawnCards、finished标志、双方剩余/已上阵/休整区/乐不思蜀/军营顶部/撤回标记 |
 
 **GameSession状态流转**:
@@ -55,7 +61,7 @@
 - 回合数递增时机：后手行动完毕后+1（一轮=先手+后手各行动一次）
 - **休整区**: `firstPlayerRestArea/secondPlayerRestArea`，List<GeneralCard>
 - **乐不思蜀**: `firstPlayerLeBuSiShu/secondPlayerLeBuSiShu`，Set<String>(卡牌ID集合)，进入休整区时自动移除
-- **撤回**: `lastDrawnCards`(上次抽出卡牌引用)+`lastDrawPlayer`+`lastDrawWasFirstTurn`+`lastDrawTurn`+`canUndo`标志
+- **撤回**: `lastDrawnCards`(上次抽出卡牌引用)+`lastDrawPlayer`+`lastDrawWasFirstTurn`+`lastDrawTurn`+`canUndo`标志+`lastDrawnFromCampTopIds`(上次抽卡中来自campTop的武将ID集合，用于撤回时正确放回)
 - **战场上限校验**: 双方战场均>5时阻止抽卡，FIELD_MAX_LIMIT=5；若任一方战场存在"徐庶"则豁免校验
 - **军营顶部(campTop)**: `firstPlayerCampTop/secondPlayerCampTop`，List<GeneralCard>，LIFO栈（add到末尾、remove从末尾），放回军营顶的武将下次抽卡优先抽出
 - **自定义抽卡数量**: nextStep(customDrawCount)支持1-4，默认由getDrawCount()决定（先手首回合1，其余2）
@@ -94,9 +100,9 @@
 - **双方>5校验**: nextStep()中检查双方field.size()均≤FIELD_MAX_LIMIT，否则返回阻断消息；若hasXuShuOnField()为true则豁免校验
 - **撤回重抽同批**: 撤回后lastDrawnCards非null且canUndo=false时，nextStep()使用lastDrawnCards而非drawFromCampAndTop()
 - **军营顶部LIFO**: drawFromCampAndTop()先从campTop末尾(LIFO)取出，不足时再randomDraw()从camp随机抽取
-- **放回军营顶**: moveToCampTop()将战场武将add到campTop末尾，同时移除乐不思蜀状态
+- **放回军营顶**: moveToCampTop()将战场武将add到campTop末尾，同时移除乐不思蜀状态，设置canUndo=false并清除lastDrawnCards（防止撤回后重抽覆盖campTop逻辑）
 - **自定义抽卡数量**: nextStep(customDrawCount)，1-4有效，否则使用getDrawCount()默认值
-- **撤回增强**: undoLastStep()同时从campTop.removeAll(lastDrawn)移除，防止撤回后武将同时在camp和campTop
+- **撤回增强**: undoLastStep()根据lastDrawnFromCampTopIds区分来源，来自campTop的放回campTop栈顶，其他放回camp；防止撤回后武将位置错误
 - **主帅卡**: startSimulation()末尾调用createCommanderCard()自动放入field
 - **休整区**: moveToRestArea()/restoreFromRestArea()移动卡牌，进入休整区自动移除乐不思蜀
 - **乐不思蜀**: toggleLeBuSiShu()切换Set中的卡牌ID
@@ -142,8 +148,8 @@
 7. 点击休整区叠卡 → 弹窗显示所有休整区武将，悬浮显示"恢复至战场"按钮
 8. 点击"下一步" → 若双方战场任一>5且无徐庶 → 提示"请先将战场上武将卡弃置至5或5以下"
 9. 点击"下一步" → POST /next {drawCount:N} → 渲染卡牌动画+更新状态+添加日志+启用撤回；抽卡数量输入框重置为2
-10. 点击"\u2191"按钮 → 调用camp-top API → 武将放回军营顶部，下次抽卡优先抽出
-11. 点击"撤回上一次抽卡" → POST /undo → 撤回上次抽卡，武将返回军营；再次"下一步"抽出同一批武将
+10. 点击"↑"按钮 → 调用camp-top API → 武将放回军营顶部，下次抽卡优先抽出；同时禁用撤回按钮
+11. 点击"撤回上一次抽卡" → POST /undo → 撤回上次抽卡，来自campTop的武将放回campTop，其他放回军营；再次"下一步"抽出同一批武将
 12. 武将不足 → 禁用"下一步"，Toast提示
 13. "重置" → 清空所有状态
 
