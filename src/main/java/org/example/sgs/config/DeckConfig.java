@@ -46,7 +46,7 @@ public class DeckConfig {
         for (String name : names) {
             for (int i = 0; i < 3; i++) {
                 String cardId = "wei_" + name + "_" + i;
-                cards.add(new GeneralCard(cardId, name, "魏", imageConfig.getCardImagePath(name)));
+                cards.add(new GeneralCard(cardId, name, "魏", imageConfig.getCardImagePath("wei/" + name)));
             }
         }
         return new PresetDeck("wei", "魏国-主帅曹操", "魏", "曹操", cards);
@@ -68,7 +68,7 @@ public class DeckConfig {
             int count = Integer.parseInt(nc[1]);
             for (int i = 0; i < count; i++) {
                 String cardId = "shu_" + name + "_" + i;
-                cards.add(new GeneralCard(cardId, name, "蜀", imageConfig.getCardImagePath(name)));
+                cards.add(new GeneralCard(cardId, name, "蜀", imageConfig.getCardImagePath("shu/" + name)));
             }
         }
         return new PresetDeck("shu", "蜀国-主帅刘备", "蜀", "刘备", cards);
@@ -85,7 +85,7 @@ public class DeckConfig {
         for (String name : names) {
             for (int i = 0; i < 3; i++) {
                 String cardId = "wu_" + name + "_" + i;
-                cards.add(new GeneralCard(cardId, name, "吴", imageConfig.getCardImagePath(name)));
+                cards.add(new GeneralCard(cardId, name, "吴", imageConfig.getCardImagePath("wu/" + name)));
             }
         }
         return new PresetDeck("wu", "吴国-孙尚香主帅", "吴", "孙尚香", cards);
@@ -102,7 +102,7 @@ public class DeckConfig {
         for (String name : names) {
             for (int i = 0; i < 3; i++) {
                 String cardId = "qun_" + name + "_" + i;
-                cards.add(new GeneralCard(cardId, name, "群", imageConfig.getCardImagePath(name)));
+                cards.add(new GeneralCard(cardId, name, "群", imageConfig.getCardImagePath("qun/" + name)));
             }
         }
         return new PresetDeck("qun", "群雄-貂蝉主帅", "群", "貂蝉", cards);
