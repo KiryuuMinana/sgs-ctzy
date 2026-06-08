@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国杀TCG - 抽卡模拟器</title>
+    <style>
+        /* ====== 基础重置与全局 ====== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --wei-color: #4a90d9;
+            --wei-glow: #4a90d966;
+            --shu-color: #d94a4a;
+            --shu-glow: #d94a4a66;
+            --wu-color: #4ad97a;
+            --wu-glow: #4ad97a66;
+            --qun-color: #9b59b6;
+            --qun-glow: #9b59b666;
+            --gold: #d4a843;
+            --gold-light: #f0d68a;
+            --bg-dark: #0a0a12;
+            --bg-card: #1a1a2e;
+            --text-primary: #e8e0d0;
+            --text-secondary: #a09880;
+            --border-subtle: #333355;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', 'STSong', 'SimSun', 'FangSong', serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ====== 背景装饰 ====== */
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(74, 144, 217, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(217, 74, 74, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 0%, rgba(212, 168, 67, 0.08) 0%, transparent 40%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(212, 168, 67, 0.02) 50px,
+                    rgba(212, 168, 67, 0.02) 51px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 50px,
+                    rgba(212, 168, 67, 0.02) 50px,
+                    rgba(212, 168, 67, 0.02) 51px
+                );
+        }
+
+        .bg-particles {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ====== 主容器 ====== */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ====== 标题区 ====== */
+        .app-header {
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+
+        .app-title {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 2.8em;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            letter-spacing: 8px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .app-title::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 10%;
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        }
+
+        .app-subtitle {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            letter-spacing: 3px;
+        }
+
+        /* ====== 玩家区域 ====== */
+        .player-zone {
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .player-zone::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 12px 12px 0 0;
+            transition: all 0.5s ease;
+        }
+
+        .player-zone.first-player::before {
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        }
+
+        .player-zone.second-player::before {
+            background: linear-gradient(90deg, transparent, #8888cc, transparent);
+        }
+
+        .player-zone.active {
+            border-color: var(--gold);
+            box-shadow: 0 0 30px rgba(212, 168, 67, 0.15), inset 0 0 30px rgba(212, 168, 67, 0.03);
+        }
+
+        .player-zone.active::before {
+            height: 4px;
+            box-shadow: 0 0 15px var(--gold);
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .player-badge {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 1.4em;
+            padding: 4px 16px;
+            border-radius: 6px;
+            letter-spacing: 3px;
+        }
+
+        .first-player .player-badge {
+            background: linear-gradient(135deg, #8b6914, #d4a843);
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .second-player .player-badge {
+            background: linear-gradient(135deg, #4444aa, #6666cc);
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .deck-name {
+            font-size: 1em;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .player-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: var(--gold-light);
+            font-size: 1.1em;
+        }
+
+        /* ====== 下拉框 ====== */
+        .deck-select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .deck-select-wrapper label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .deck-select {
+            background: rgba(40, 40, 70, 0.9);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.9em;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s;
+            min-width: 180px;
+        }
+
+        .deck-select:hover {
+            border-color: var(--gold);
+        }
+
+        .deck-select:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(212, 168, 67, 0.2);
+        }
+
+        .deck-select option {
+            background: #1a1a2e;
+            color: var(--text-primary);
+        }
+
+        /* ====== 武将卡区域 ====== */
+        .cards-area {
+            min-height: 140px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 0;
+            position: relative;
+        }
+
+        .cards-area.empty::after {
+            content: '暂无武将上阵';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            opacity: 0.5;
+        }
+
+        /* ====== 武将卡 ====== */
+        .general-card {
+            width: 100px;
+            height: 140px;
+            border-radius: 8px;
+            position: relative;
+            cursor: default;
+            perspective: 600px;
+            animation: cardAppear 0.6s ease-out;
+        }
+
+        @keyframes cardAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotateY(180deg);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.1) rotateY(90deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotateY(0deg);
+            }
+        }
+
+        .general-card-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .general-card:hover .general-card-inner {
+            transform: translateY(-5px);
+        }
+
+        /* 势力颜色 */
+        .general-card.faction-wei .general-card-inner {
+            border-color: var(--wei-color);
+            box-shadow: 0 0 12px var(--wei-glow);
+            background: linear-gradient(180deg, #1a2a4a 0%, #0d1a30 100%);
+        }
+        .general-card.faction-wei:hover .general-card-inner {
+            box-shadow: 0 4px 20px var(--wei-glow);
+        }
+
+        .general-card.faction-shu .general-card-inner {
+            border-color: var(--shu-color);
+            box-shadow: 0 0 12px var(--shu-glow);
+            background: linear-gradient(180deg, #3a1a1a 0%, #2a0d0d 100%);
+        }
+        .general-card.faction-shu:hover .general-card-inner {
+            box-shadow: 0 4px 20px var(--shu-glow);
+        }
+
+        .general-card.faction-wu .general-card-inner {
+            border-color: var(--wu-color);
+            box-shadow: 0 0 12px var(--wu-glow);
+            background: linear-gradient(180deg, #1a3a1a 0%, #0d2a0d 100%);
+        }
+        .general-card.faction-wu:hover .general-card-inner {
+            box-shadow: 0 4px 20px var(--wu-glow);
+        }
+
+        .general-card.faction-qun .general-card-inner {
+            border-color: var(--qun-color);
+            box-shadow: 0 0 12px var(--qun-glow);
+            background: linear-gradient(180deg, #2a1a3a 0%, #1a0d2a 100%);
+        }
+        .general-card.faction-qun:hover .general-card-inner {
+            box-shadow: 0 4px 20px var(--qun-glow);
+        }
+
+        /* 新抽出的卡高亮 */
+        .general-card.new-draw .general-card-inner {
+            animation: cardGlow 1.5s ease-in-out;
+        }
+
+        @keyframes cardGlow {
+            0% { filter: brightness(1); }
+            30% { filter: brightness(1.8); }
+            100% { filter: brightness(1); }
+        }
+
+        /* 卡片装饰边框 */
+        .card-border-decor {
+            position: absolute;
+            top: 3px; left: 3px; right: 3px; bottom: 3px;
+            border: 1px solid rgba(212, 168, 67, 0.3);
+            border-radius: 5px;
+            pointer-events: none;
+        }
+
+        .card-border-decor::before,
+        .card-border-decor::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 1px solid rgba(212, 168, 67, 0.5);
+        }
+
+        .card-border-decor::before {
+            top: 2px; left: 2px;
+            border-right: none; border-bottom: none;
+        }
+
+        .card-border-decor::after {
+            bottom: 2px; right: 2px;
+            border-left: none; border-top: none;
+        }
+
+        /* 卡片图片区域 */
+        .card-image-area {
+            width: 100%;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card-image-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-image-placeholder {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 2em;
+            opacity: 0.6;
+        }
+
+        .faction-wei .card-image-placeholder { color: var(--wei-color); }
+        .faction-shu .card-image-placeholder { color: var(--shu-color); }
+        .faction-wu .card-image-placeholder { color: var(--wu-color); }
+        .faction-qun .card-image-placeholder { color: var(--qun-color); }
+
+        /* 卡片名称区域 */
+        .card-name-area {
+            text-align: center;
+            padding: 4px 5px;
+            background: rgba(0, 0, 0, 0.5);
+            border-top: 1px solid rgba(212, 168, 67, 0.2);
+        }
+
+        .card-name {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 1.05em;
+            color: var(--gold-light);
+            letter-spacing: 2px;
+        }
+
+        .card-faction-tag {
+            font-size: 0.7em;
+            padding: 1px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-top: 2px;
+        }
+
+        .faction-wei .card-faction-tag { background: var(--wei-color); color: #fff; }
+        .faction-shu .card-faction-tag { background: var(--shu-color); color: #fff; }
+        .faction-wu .card-faction-tag { background: var(--wu-color); color: #fff; }
+        .faction-qun .card-faction-tag { background: var(--qun-color); color: #fff; }
+
+        /* ====== 中间控制区 ====== */
+        .control-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1em;
+            padding: 10px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.5s, height 0.5s;
+        }
+
+        .btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #8b6914, #d4a843);
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(212, 168, 67, 0.3);
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: linear-gradient(135deg, #d4a843, #f0d68a);
+            box-shadow: 0 6px 25px rgba(212, 168, 67, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-next {
+            background: linear-gradient(135deg, #2a5a2a, #3a8a3a);
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(74, 217, 122, 0.2);
+        }
+
+        .btn-next:hover:not(:disabled) {
+            background: linear-gradient(135deg, #3a8a3a, #4ad97a);
+            box-shadow: 0 6px 25px rgba(74, 217, 122, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-reset {
+            background: rgba(80, 80, 100, 0.6);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .btn-reset:hover:not(:disabled) {
+            background: rgba(100, 100, 130, 0.6);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ====== 状态信息条 ====== */
+        .status-bar {
+            text-align: center;
+            padding: 8px;
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .status-bar .turn-info {
+            color: var(--gold-light);
+            font-weight: bold;
+        }
+
+        .status-bar .next-action {
+            padding: 3px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .next-action.first {
+            background: rgba(212, 168, 67, 0.2);
+            border: 1px solid rgba(212, 168, 67, 0.4);
+            color: var(--gold-light);
+        }
+
+        .next-action.second {
+            background: rgba(100, 100, 200, 0.2);
+            border: 1px solid rgba(100, 100, 200, 0.4);
+            color: #aab;
+        }
+
+        /* ====== 提示消息（Toast） ====== */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            animation: toastIn 0.4s ease-out, toastOut 0.4s ease-in forwards;
+            animation-delay: 0s, 2.5s;
+            pointer-events: auto;
+            text-align: center;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast.info {
+            background: rgba(74, 144, 217, 0.9);
+            color: #fff;
+            border: 1px solid rgba(74, 144, 217, 0.5);
+            box-shadow: 0 4px 20px rgba(74, 144, 217, 0.3);
+        }
+
+        .toast.success {
+            background: rgba(74, 217, 122, 0.9);
+            color: #fff;
+            border: 1px solid rgba(74, 217, 122, 0.5);
+            box-shadow: 0 4px 20px rgba(74, 217, 122, 0.3);
+        }
+
+        .toast.warning {
+            background: rgba(212, 168, 67, 0.9);
+            color: #fff;
+            border: 1px solid rgba(212, 168, 67, 0.5);
+            box-shadow: 0 4px 20px rgba(212, 168, 67, 0.3);
+        }
+
+        .toast.error {
+            background: rgba(217, 74, 74, 0.9);
+            color: #fff;
+            border: 1px solid rgba(217, 74, 74, 0.5);
+            box-shadow: 0 4px 20px rgba(217, 74, 74, 0.3);
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* ====== 战场分割线 ====== */
+        .battlefield-divider {
+            position: relative;
+            text-align: center;
+            padding: 5px 0;
+        }
+
+        .battlefield-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-subtle), var(--gold), var(--border-subtle), transparent);
+        }
+
+        .battlefield-divider span {
+            position: relative;
+            background: var(--bg-dark);
+            padding: 0 15px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            letter-spacing: 5px;
+        }
+
+        /* ====== 粒子效果 ====== */
+        .particle {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0;
+        }
+
+        /* ====== 抽卡特效 ====== */
+        .draw-effect {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 100;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .draw-flash {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(212, 168, 67, 0.3), transparent 70%);
+            animation: drawFlash 0.8s ease-out forwards;
+        }
+
+        @keyframes drawFlash {
+            0% { opacity: 0; }
+            30% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        /* ====== 响应式 ====== */
+        @media (max-width: 768px) {
+            .app-title { font-size: 2em; letter-spacing: 4px; }
+            .player-header { flex-direction: column; align-items: flex-start; }
+            .general-card { width: 80px; height: 112px; }
+            .card-image-area { height: 55px; }
+            .card-name { font-size: 0.9em; }
+            .btn { padding: 8px 20px; font-size: 0.9em; }
+            .cards-area { gap: 6px; }
+            .battle-log { max-height: 120px; }
+        }
+
+        @media (max-width: 480px) {
+            .app-title { font-size: 1.6em; letter-spacing: 2px; }
+            .general-card { width: 70px; height: 98px; }
+            .card-image-area { height: 48px; }
+            .card-image-placeholder { font-size: 1.5em; }
+            .card-name { font-size: 0.8em; }
+            .player-stats { flex-direction: column; gap: 5px; }
+            .battle-log { max-height: 80px; }
+        }
+
+        /* ====== 势力图标 ====== */
+        .faction-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            color: #fff;
+            margin-right: 5px;
+        }
+
+        .faction-icon.wei { background: var(--wei-color); }
+        .faction-icon.shu { background: var(--shu-color); }
+        .faction-icon.wu { background: var(--wu-color); }
+        .faction-icon.qun { background: var(--qun-color); }
+
+        /* ====== 军营剩余指示 ====== */
+        .camp-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .camp-bar {
+            width: 60px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .camp-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .first-player .camp-bar-fill { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
+        .second-player .camp-bar-fill { background: linear-gradient(90deg, #6666cc, #8888ee); }
+
+        /* ====== 战斗日志 ====== */
+        .battle-log {
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            background: rgba(15, 15, 30, 0.9);
+            padding: 10px 15px;
+            max-height: 160px;
+            overflow-y: auto;
+            margin: 8px 0;
+            font-size: 0.82em;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(212,168,67,0.3) transparent;
+        }
+
+        .battle-log::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .battle-log::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .battle-log::-webkit-scrollbar-thumb {
+            background: rgba(212,168,67,0.3);
+            border-radius: 2px;
+        }
+
+        .battle-log .log-title {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 1.1em;
+            color: var(--gold-light);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(212,168,67,0.2);
+            padding-bottom: 3px;
+        }
+
+        .battle-log .log-entry {
+            padding: 2px 0;
+            animation: logAppear 0.3s ease-out;
+        }
+
+        @keyframes logAppear {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-entry .log-turn {
+            color: var(--gold);
+            font-weight: bold;
+        }
+
+        .log-entry .log-player-first {
+            color: var(--gold-light);
+        }
+
+        .log-entry .log-player-second {
+            color: #aab;
+        }
+
+        .log-entry .log-cards {
+            color: var(--text-primary);
+        }
+
+        .log-entry .log-faction-wei { color: var(--wei-color); }
+        .log-entry .log-faction-shu { color: var(--shu-color); }
+        .log-entry .log-faction-wu { color: var(--wu-color); }
+        .log-entry .log-faction-qun { color: var(--qun-color); }
+    </style>
+</head>
+<body>
+
+<div class="bg-pattern"></div>
+<canvas class="bg-particles" id="particleCanvas"></canvas>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-container">
+    <!-- 标题 -->
+    <div class="app-header">
+        <h1 class="app-title">三国杀TCG · 抽卡模拟</h1>
+        <p class="app-subtitle">军营点将 · 对阵模拟</p>
+    </div>
+
+    <!-- 先手玩家 -->
+    <div class="player-zone first-player" id="firstPlayerZone">
+        <div class="player-header">
+            <div class="player-info">
+                <span class="player-badge">先手</span>
+                <span class="deck-name" id="firstDeckName">未选择预组</span>
+            </div>
+            <div class="deck-select-wrapper" id="firstDeckSelectWrapper">
+                <label>选择预组：</label>
+                <select class="deck-select" id="firstDeckSelect">
+                    <option value="">-- 请选择预组 --</option>
+                </select>
+            </div>
+            <div class="player-stats" id="firstPlayerStats" style="display:none;">
+                <div class="stat-item">
+                    <span>军营：</span>
+                    <span class="stat-value" id="firstCampCount">39</span>
+                    <span>/ 39</span>
+                    <div class="camp-indicator">
+                        <div class="camp-bar">
+                            <div class="camp-bar-fill" id="firstCampBar" style="width:100%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span>已上阵：</span>
+                    <span class="stat-value" id="firstFieldCount">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="cards-area empty" id="firstFieldCards"></div>
+    </div>
+
+    <!-- 战场分割线 -->
+    <div class="battlefield-divider"><span>⚔ 战场 ⚔</span></div>
+
+    <!-- 控制区 -->
+    <div class="control-area">
+        <button class="btn btn-start" id="btnStart" disabled>开启模拟</button>
+        <button class="btn btn-next" id="btnNext" disabled>下一步</button>
+        <button class="btn btn-reset" id="btnReset" disabled>重置</button>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="status-bar" id="statusBar">
+        <span>请为双方玩家选择预组后开始模拟</span>
+    </div>
+
+    <!-- 战斗日志 -->
+    <div class="battle-log" id="battleLog" style="display:none;">
+        <div class="log-title">📜 战报</div>
+        <div id="logContent"></div>
+    </div>
+
+    <!-- 后手玩家 -->
+    <div class="player-zone second-player" id="secondPlayerZone">
+        <div class="player-header">
+            <div class="player-info">
+                <span class="player-badge">后手</span>
+                <span class="deck-name" id="secondDeckName">未选择预组</span>
+            </div>
+            <div class="deck-select-wrapper" id="secondDeckSelectWrapper">
+                <label>选择预组：</label>
+                <select class="deck-select" id="secondDeckSelect">
+                    <option value="">-- 请选择预组 --</option>
+                </select>
+            </div>
+            <div class="player-stats" id="secondPlayerStats" style="display:none;">
+                <div class="stat-item">
+                    <span>军营：</span>
+                    <span class="stat-value" id="secondCampCount">39</span>
+                    <span>/ 39</span>
+                    <div class="camp-indicator">
+                        <div class="camp-bar">
+                            <div class="camp-bar-fill" id="secondCampBar" style="width:100%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span>已上阵：</span>
+                    <span class="stat-value" id="secondFieldCount">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="cards-area empty" id="secondFieldCards"></div>
+    </div>
+</div>
+
+<script>
+    // ====== 全局状态 ======
+    let simulationStarted = false;
+    let simulationFinished = false;
+    let decks = [];
+    let firstPlayerTotal = 39;
+    let secondPlayerTotal = 39;
+
+    // ====== 初始化 ======
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDecks();
+        initParticles();
+        bindEvents();
+    });
+
+    // ====== 加载预组列表 ======
+    function loadDecks() {
+        fetch('/api/decks')
+            .then(res => res.json())
+            .then(data => {
+                decks = data;
+                const firstSelect = document.getElementById('firstDeckSelect');
+                const secondSelect = document.getElementById('secondDeckSelect');
+
+                data.forEach(deck => {
+                    const opt1 = createDeckOption(deck);
+                    const opt2 = createDeckOption(deck);
+                    firstSelect.appendChild(opt1);
+                    secondSelect.appendChild(opt2);
+                });
+            })
+            .catch(err => {
+                showToast('加载预组数据失败，请确认服务已启动', 'error');
+            });
+    }
+
+    function createDeckOption(deck) {
+        const opt = document.createElement('option');
+        opt.value = deck.id;
+        const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+        opt.textContent = deck.name + ' (' + deck.totalCount + '将)';
+        return opt;
+    }
+
+    // ====== 绑定事件 ======
+    function bindEvents() {
+        const firstSelect = document.getElementById('firstDeckSelect');
+        const secondSelect = document.getElementById('secondDeckSelect');
+        const btnStart = document.getElementById('btnStart');
+        const btnNext = document.getElementById('btnNext');
+        const btnReset = document.getElementById('btnReset');
+
+        firstSelect.addEventListener('change', onDeckSelectChange);
+        secondSelect.addEventListener('change', onDeckSelectChange);
+
+        btnStart.addEventListener('click', startSimulation);
+        btnNext.addEventListener('click', nextStep);
+        btnReset.addEventListener('click', resetSimulation);
+    }
+
+    function onDeckSelectChange() {
+        const firstVal = document.getElementById('firstDeckSelect').value;
+        const secondVal = document.getElementById('secondDeckSelect').value;
+
+        // 更新预组名称显示
+        const firstDeck = decks.find(d => d.id === firstVal);
+        const secondDeck = decks.find(d => d.id === secondVal);
+        document.getElementById('firstDeckName').textContent = firstDeck ? firstDeck.name : '未选择预组';
+        document.getElementById('secondDeckName').textContent = secondDeck ? secondDeck.name : '未选择预组';
+
+        // 启用/禁用开始按钮
+        document.getElementById('btnStart').disabled = !(firstVal && secondVal);
+    }
+
+    // ====== 开始模拟 ======
+    function startSimulation() {
+        const firstDeckId = document.getElementById('firstDeckSelect').value;
+        const secondDeckId = document.getElementById('secondDeckSelect').value;
+
+        if (!firstDeckId || !secondDeckId) {
+            showToast('请为双方玩家选择预组', 'warning');
+            return;
+        }
+
+        fetch('/api/simulation/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                firstPlayerDeckId: firstDeckId,
+                secondPlayerDeckId: secondDeckId
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+
+            simulationStarted = true;
+            simulationFinished = false;
+
+            // 获取总数
+            firstPlayerTotal = data.firstPlayerCampSize;
+            secondPlayerTotal = data.secondPlayerCampSize;
+
+            // 更新UI
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnNext').disabled = false;
+            document.getElementById('btnReset').disabled = false;
+            document.getElementById('firstDeckSelect').disabled = true;
+            document.getElementById('secondDeckSelect').disabled = true;
+
+            // 显示统计
+            document.getElementById('firstPlayerStats').style.display = 'flex';
+            document.getElementById('secondPlayerStats').style.display = 'flex';
+            updateCampDisplay('first', data.firstPlayerCampSize, 0);
+            updateCampDisplay('second', data.secondPlayerCampSize, 0);
+
+            // 清空战场
+            document.getElementById('firstFieldCards').innerHTML = '';
+            document.getElementById('secondFieldCards').innerHTML = '';
+            document.getElementById('firstFieldCards').classList.add('empty');
+            document.getElementById('secondFieldCards').classList.add('empty');
+
+            // 更新状态栏
+            updateStatusBar(1, true, true);
+
+            // 标记先手活跃
+            setActivePlayer('first');
+
+            // 显示战斗日志
+            document.getElementById('battleLog').style.display = 'block';
+            document.getElementById('logContent').innerHTML = '';
+
+            showToast('模拟开始！先手首回合仅上阵1名武将', 'success');
+        })
+        .catch(err => {
+            showToast('启动模拟失败: ' + err.message, 'error');
+        });
+    }
+
+    // ====== 下一步 ======
+    function nextStep() {
+        if (!simulationStarted || simulationFinished) return;
+
+        document.getElementById('btnNext').disabled = true;
+
+        fetch('/api/simulation/next', {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                document.getElementById('btnNext').disabled = false;
+                return;
+            }
+
+            const player = data.player;
+            const drawnCards = data.drawnCards || [];
+
+            // 添加抽卡特效
+            triggerDrawEffect();
+
+            // 渲染新抽出的卡
+            setTimeout(() => {
+                renderDrawnCards(player, drawnCards);
+
+                // 添加战斗日志
+                addBattleLog(data.turn, player, drawnCards, data.finished);
+
+                // 更新统计
+                updateCampDisplay('first', data.firstPlayerCampRemaining, data.firstPlayerField.length);
+                updateCampDisplay('second', data.secondPlayerCampRemaining, data.secondPlayerField.length);
+
+                // 更新状态栏
+                const nextIsFirst = player === 'second'; // 下一个是另一个玩家
+                updateStatusBar(data.turn, nextIsFirst, false);
+
+                // 标记活跃玩家
+                setActivePlayer(nextIsFirst ? 'first' : 'second');
+
+                if (data.finished) {
+                    simulationFinished = true;
+                    document.getElementById('btnNext').disabled = true;
+                    showToast(data.message, 'warning');
+                } else {
+                    document.getElementById('btnNext').disabled = false;
+                    const playerLabel = player === 'first' ? '先手' : '后手';
+                    const cardNames = drawnCards.map(c => c.name).join('、');
+                    showToast(playerLabel + '上阵：' + cardNames, 'info');
+                }
+            }, 300);
+        })
+        .catch(err => {
+            showToast('操作失败: ' + err.message, 'error');
+            document.getElementById('btnNext').disabled = false;
+        });
+    }
+
+    // ====== 重置 ======
+    function resetSimulation() {
+        fetch('/api/simulation/reset', {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            simulationStarted = false;
+            simulationFinished = false;
+
+            // 重置UI
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnNext').disabled = true;
+            document.getElementById('btnReset').disabled = true;
+            document.getElementById('firstDeckSelect').disabled = false;
+            document.getElementById('secondDeckSelect').disabled = false;
+
+            document.getElementById('firstFieldCards').innerHTML = '';
+            document.getElementById('secondFieldCards').innerHTML = '';
+            document.getElementById('firstFieldCards').classList.add('empty');
+            document.getElementById('secondFieldCards').classList.add('empty');
+
+            document.getElementById('firstPlayerStats').style.display = 'none';
+            document.getElementById('secondPlayerStats').style.display = 'none';
+
+            document.getElementById('statusBar').innerHTML = '<span>请为双方玩家选择预组后开始模拟</span>';
+
+            document.getElementById('firstPlayerZone').classList.remove('active');
+            document.getElementById('secondPlayerZone').classList.remove('active');
+
+            // 隐藏战斗日志
+            document.getElementById('battleLog').style.display = 'none';
+
+            showToast('模拟已重置', 'info');
+        })
+        .catch(err => {
+            showToast('重置失败: ' + err.message, 'error');
+        });
+    }
+
+    // ====== 渲染武将卡 ======
+    function renderDrawnCards(player, cards) {
+        const containerId = player === 'first' ? 'firstFieldCards' : 'secondFieldCards';
+        const container = document.getElementById(containerId);
+        container.classList.remove('empty');
+
+        cards.forEach((card, index) => {
+            const cardEl = createCardElement(card, index);
+            container.appendChild(cardEl);
+        });
+    }
+
+    function createCardElement(cardData, delayIndex) {
+        const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+        const factionClass = factionMap[cardData.faction] || 'qun';
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'general-card faction-' + factionClass + ' new-draw';
+        cardEl.style.animationDelay = (delayIndex * 0.15) + 's';
+
+        const inner = document.createElement('div');
+        inner.className = 'general-card-inner';
+
+        // 装饰边框
+        const borderDecor = document.createElement('div');
+        borderDecor.className = 'card-border-decor';
+
+        // 图片区域
+        const imageArea = document.createElement('div');
+        imageArea.className = 'card-image-area';
+
+        if (cardData.imagePath) {
+            const img = document.createElement('img');
+            img.src = cardData.imagePath;
+            img.alt = cardData.name;
+            img.onerror = function() {
+                // 图片加载失败时显示文字占位
+                this.style.display = 'none';
+                const placeholder = document.createElement('span');
+                placeholder.className = 'card-image-placeholder';
+                placeholder.textContent = cardData.name.charAt(0);
+                imageArea.appendChild(placeholder);
+            };
+            imageArea.appendChild(img);
+        } else {
+            const placeholder = document.createElement('span');
+            placeholder.className = 'card-image-placeholder';
+            placeholder.textContent = cardData.name.charAt(0);
+            imageArea.appendChild(placeholder);
+        }
+
+        // 名称区域
+        const nameArea = document.createElement('div');
+        nameArea.className = 'card-name-area';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'card-name';
+        nameEl.textContent = cardData.name;
+
+        const factionTag = document.createElement('span');
+        factionTag.className = 'card-faction-tag';
+        factionTag.textContent = cardData.faction;
+
+        nameArea.appendChild(nameEl);
+        nameArea.appendChild(factionTag);
+
+        inner.appendChild(borderDecor);
+        inner.appendChild(imageArea);
+        inner.appendChild(nameArea);
+        cardEl.appendChild(inner);
+
+        // 移除高亮动画
+        setTimeout(() => {
+            cardEl.classList.remove('new-draw');
+        }, 2000);
+
+        return cardEl;
+    }
+
+    // ====== 战斗日志 ======
+    function addBattleLog(turn, player, drawnCards, finished) {
+        const logContent = document.getElementById('logContent');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+
+        const playerLabel = player === 'first' ? '先手' : '后手';
+        const playerClass = player === 'first' ? 'log-player-first' : 'log-player-second';
+
+        const factionMap = { '魏': 'log-faction-wei', '蜀': 'log-faction-shu', '吴': 'log-faction-wu', '群': 'log-faction-qun' };
+
+        let cardsHtml = drawnCards.map(c => {
+            const factionClass = factionMap[c.faction] || '';
+            return '<span class="' + factionClass + '">' + c.name + '</span>';
+        }).join('、');
+
+        entry.innerHTML = '<span class="log-turn">[第' + turn + '回合]</span> ' +
+            '<span class="' + playerClass + '">' + playerLabel + '</span>' +
+            ' 上阵：<span class="log-cards">' + cardsHtml + '</span>';
+
+        if (finished) {
+            entry.innerHTML += ' <span style="color: #d94a4a;">— 武将不足，模拟结束</span>';
+        }
+
+        logContent.appendChild(entry);
+
+        // 自动滚动到底部
+        const battleLog = document.getElementById('battleLog');
+        battleLog.scrollTop = battleLog.scrollHeight;
+    }
+
+    // ====== 更新军营显示 ======
+    function updateCampDisplay(player, campRemaining, fieldCount) {
+        const total = player === 'first' ? firstPlayerTotal : secondPlayerTotal;
+        document.getElementById(player + 'CampCount').textContent = campRemaining;
+        document.getElementById(player + 'FieldCount').textContent = fieldCount;
+
+        const percent = total > 0 ? (campRemaining / total * 100) : 0;
+        document.getElementById(player + 'CampBar').style.width = percent + '%';
+    }
+
+    // ====== 更新状态栏 ======
+    function updateStatusBar(turn, nextIsFirst, isFirstTurn) {
+        const statusBar = document.getElementById('statusBar');
+        let html = '<span class="turn-info">第 ' + turn + ' 回合</span>';
+
+        if (isFirstTurn && nextIsFirst) {
+            html += '<span class="next-action first">先手首回合 · 上阵1名武将</span>';
+        } else if (nextIsFirst) {
+            html += '<span class="next-action first">先手行动 · 上阵2名武将</span>';
+        } else {
+            html += '<span class="next-action second">后手行动 · 上阵2名武将</span>';
+        }
+
+        statusBar.innerHTML = html;
+    }
+
+    // ====== 设置活跃玩家高亮 ======
+    function setActivePlayer(player) {
+        document.getElementById('firstPlayerZone').classList.toggle('active', player === 'first');
+        document.getElementById('secondPlayerZone').classList.toggle('active', player === 'second');
+    }
+
+    // ====== 抽卡特效 ======
+    function triggerDrawEffect() {
+        const effect = document.createElement('div');
+        effect.className = 'draw-effect';
+        effect.innerHTML = '<div class="draw-flash"></div>';
+        document.body.appendChild(effect);
+        setTimeout(() => effect.remove(), 1000);
+    }
+
+    // ====== Toast消息 ======
+    function showToast(message, type) {
+        type = type || 'info';
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ====== 背景粒子 ======
+    function initParticles() {
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const maxParticles = 50;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function createParticle() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: -Math.random() * 0.5 - 0.1,
+                radius: Math.random() * 1.5 + 0.5,
+                alpha: Math.random() * 0.3 + 0.1,
+                color: ['#d4a843', '#4a90d9', '#d94a4a', '#4ad97a', '#9b59b6'][Math.floor(Math.random() * 5)]
+            };
+        }
+
+        for (let i = 0; i < maxParticles; i++) {
+            particles.push(createParticle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+                if (p.x < -10) p.x = canvas.width + 10;
+                if (p.x > canvas.width + 10) p.x = -10;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.fill();
+            });
+
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    }
+</script>
+
+</body>
+</html>
