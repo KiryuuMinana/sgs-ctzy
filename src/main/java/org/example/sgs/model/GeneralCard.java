@@ -17,6 +17,15 @@ public class GeneralCard {
     /** 图片路径（可自定义替换） */
     private String imagePath;
 
+    /** 是否为主帅卡 */
+    private boolean isCommander;
+
+    /** 技能描述（预留口子，后续填充具体文案） */
+    private String skillDescription;
+
+    /** 技能图片路径（预留口子） */
+    private String skillImagePath;
+
     public GeneralCard() {
     }
 
@@ -25,6 +34,19 @@ public class GeneralCard {
         this.name = name;
         this.faction = faction;
         this.imagePath = imagePath;
+        this.isCommander = false;
+        this.skillDescription = "";
+        this.skillImagePath = "";
+    }
+
+    public GeneralCard(String id, String name, String faction, String imagePath, boolean isCommander) {
+        this.id = id;
+        this.name = name;
+        this.faction = faction;
+        this.imagePath = imagePath;
+        this.isCommander = isCommander;
+        this.skillDescription = "";
+        this.skillImagePath = "";
     }
 
     public String getId() {
@@ -57,6 +79,30 @@ public class GeneralCard {
 
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
+    }
+
+    public boolean isCommander() {
+        return isCommander;
+    }
+
+    public void setCommander(boolean commander) {
+        isCommander = commander;
+    }
+
+    public String getSkillDescription() {
+        return skillDescription;
+    }
+
+    public void setSkillDescription(String skillDescription) {
+        this.skillDescription = skillDescription;
+    }
+
+    public String getSkillImagePath() {
+        return skillImagePath;
+    }
+
+    public void setSkillImagePath(String skillImagePath) {
+        this.skillImagePath = skillImagePath;
     }
 
     @Override

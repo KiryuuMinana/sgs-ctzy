@@ -1,6 +1,7 @@
 package org.example.sgs.service;
 
 import org.example.sgs.config.DeckConfig;
+import org.example.sgs.config.SkillConfig;
 import org.example.sgs.model.DrawResult;
 import org.example.sgs.model.GameSession;
 import org.example.sgs.model.GeneralCard;
@@ -16,8 +17,14 @@ import java.util.*;
 @Service
 public class SimulationService {
 
+    /** 战场武将上限（大于此值不可抽卡） */
+    private static final int FIELD_MAX_LIMIT = 5;
+
     @Autowired
     private DeckConfig deckConfig;
+
+    @Autowired
+    private SkillConfig skillConfig;
 
     public DeckConfig getDeckConfig() {
         return deckConfig;
@@ -25,9 +32,7 @@ public class SimulationService {
 
     /**
      * 开始模拟
-     * @param firstPlayerDeckId  先手玩家预组ID
-     * @param secondPlayerDeckId 后手玩家预组ID
-     * @return 初始的对局会话
+     * 主帅卡自动放置到战场
      */
     public GameSession startSimulation(String firstPlayerDeckId, String secondPlayerDeckId) {
         PresetDeck firstDeck = deckConfig.getDeck(firstPlayerDeckId);
@@ -47,34 +52,61 @@ public class SimulationService {
         session.setCurrentTurn(1);
         session.setFinished(false);
 
+        // 主帅卡自动上场
+        GeneralCard firstCommander = deckConfig.createCommanderCard(firstPlayerDeckId);
+        GeneralCard secondCommander = deckConfig.createCommanderCard(secondPlayerDeckId);
+        if (firstCommander != null) {
+            session.getFirstPlayerField().add(firstCommander);
+        }
+        if (secondCommander != null) {
+            session.getSecondPlayerField().add(secondCommander);
+        }
+
         return session;
     }
 
     /**
      * 执行下一步（抽卡）
-     * @param session 当前对局会话
-     * @return 抽卡结果
+     * 支持自定义抽卡数量，优先从军营顶部抽取
      */
-    public DrawResult nextStep(GameSession session) {
+    public DrawResult nextStep(GameSession session, Integer customDrawCount) {
         DrawResult result = new DrawResult();
-
+    
         if (session.isFinished()) {
             result.setFinished(true);
             result.setMessage("模拟已结束");
+            fillResultState(result, session);
             return result;
         }
-
+    
         boolean isFirstPlayer = session.isNextIsFirstPlayer();
         List<GeneralCard> camp = isFirstPlayer ? session.getFirstPlayerCamp() : session.getSecondPlayerCamp();
+        List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
         List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
-
-        int drawCount = session.getDrawCount();
-
+    
+        // check both players field >5, xu shu exemption
+        boolean hasXuShu = hasXuShuOnField(session);
+        if (!hasXuShu && (session.getFirstPlayerField().size() > FIELD_MAX_LIMIT
+                || session.getSecondPlayerField().size() > FIELD_MAX_LIMIT)) {
+            result.setFinished(false);
+            result.setMessage("请先将战场上武将卡弃置至5或5以下");
+            result.setPlayer(isFirstPlayer ? "first" : "second");
+            result.setTurn(session.getCurrentTurn());
+            result.setDrawnCards(Collections.emptyList());
+            fillResultState(result, session);
+            return result;
+        }
+    
+        // draw count: custom or default
+        int drawCount = (customDrawCount != null && customDrawCount >= 1 && customDrawCount <= 4)
+                ? customDrawCount : session.getDrawCount();
+    
         result.setPlayer(isFirstPlayer ? "first" : "second");
         result.setTurn(session.getCurrentTurn());
-
-        // 检查军营中是否有足够的武将
-        if (camp.isEmpty()) {
+    
+        // check if camp + campTop has enough generals
+        int totalAvailable = camp.size() + campTop.size();
+        if (totalAvailable == 0) {
             result.setFinished(true);
             result.setMessage("武将数不足，本次模拟结束");
             result.setDrawnCards(Collections.emptyList());
@@ -82,11 +114,10 @@ public class SimulationService {
             fillResultState(result, session);
             return result;
         }
-
-        // 实际可抽取数量
-        int actualDraw = Math.min(drawCount, camp.size());
+    
+        // actual draw count
+        int actualDraw = Math.min(drawCount, totalAvailable);
         if (actualDraw < drawCount) {
-            // 不足以上阵指定数量的武将
             result.setMessage("武将数不足，本次模拟结束");
             result.setFinished(true);
             session.setFinished(true);
@@ -94,41 +125,210 @@ public class SimulationService {
             result.setMessage("上阵成功");
             result.setFinished(false);
         }
-
-        // 随机抽取武将
-        List<GeneralCard> drawn = randomDraw(camp, actualDraw);
+    
+        // draw cards: if re-draw after undo, use same cards
+        List<GeneralCard> drawn;
+        if (session.getLastDrawnCards() != null && !session.isCanUndo()
+                && session.getLastDrawnCards().size() == actualDraw) {
+            // re-draw after undo: use same cards (not random)
+            drawn = new ArrayList<>(session.getLastDrawnCards());
+        } else {
+            drawn = drawFromCampAndTop(camp, campTop, actualDraw);
+        }
         result.setDrawnCards(drawn);
 
-        // 从军营移除，加入已上阵列表
+        // record undo info (save state before draw)
+        session.setLastDrawnCards(new ArrayList<>(drawn));
+        session.setLastDrawPlayer(isFirstPlayer ? "first" : "second");
+        session.setLastDrawWasFirstTurn(session.isFirstTurn());
+        session.setLastDrawTurn(session.getCurrentTurn());
+        session.setCanUndo(true);
+    
+        // remove drawn from camp (campTop already removed in drawFromCampAndTop)
         camp.removeAll(drawn);
         field.addAll(drawn);
-
-        // 更新回合状态
+    
+        // update turn state
         if (isFirstPlayer && session.isFirstTurn()) {
-            // 先手首回合结束，标记不再是首回合
             session.setFirstTurn(false);
         }
-
-        // 切换行动方
+    
+        // switch player
         session.setNextIsFirstPlayer(!isFirstPlayer);
-
-        // 如果切换到先手玩家，回合数+1（后手行动完后算一个完整轮次）
-        // 实际上回合数按先手方行动次数计算
-        // 先手 -> 后手 -> 先手(回合+1) -> 后手 -> ...
-        // 但这里的"回合"更自然的理解是：每次有人行动就是一个回合
-        // 按需求理解：先手首回合 -> 后手回合 -> 先手回合 -> 后手回合...
-        // 回合数在先手玩家行动时递增
+    
         if (!isFirstPlayer) {
-            // 后手行动完，下一个是先手，回合数+1
             session.setCurrentTurn(session.getCurrentTurn() + 1);
         }
-
+    
         fillResultState(result, session);
         return result;
     }
 
     /**
-     * 随机从军营中抽取指定数量的武将
+     * 撤回上一步抽卡
+     * 将抽出的武将放回军营，恢复回合状态
+     * 注意：撤回后再次“下一步”时，抽出的是同一批武将（非随机重新抽）
+     */
+    public DrawResult undoLastStep(GameSession session) {
+        DrawResult result = new DrawResult();
+
+        if (!session.isCanUndo() || session.getLastDrawnCards() == null) {
+            result.setFinished(false);
+            result.setMessage("无法撤回：没有可撤回的操作");
+            fillResultState(result, session);
+            return result;
+        }
+
+        List<GeneralCard> lastDrawn = session.getLastDrawnCards();
+        String lastPlayer = session.getLastDrawPlayer();
+        boolean isFirstPlayer = "first".equals(lastPlayer);
+
+        List<GeneralCard> camp = isFirstPlayer ? session.getFirstPlayerCamp() : session.getSecondPlayerCamp();
+        List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
+        List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
+
+        // remove drawn cards from field, campTop, then add back to camp
+        field.removeAll(lastDrawn);
+        campTop.removeAll(lastDrawn);
+        camp.addAll(lastDrawn);
+
+        // 恢复回合状态
+        session.setNextIsFirstPlayer(isFirstPlayer);
+        session.setFirstTurn(session.isLastDrawWasFirstTurn());
+        session.setCurrentTurn(session.getLastDrawTurn());
+        // 清除撤回标记，但保留lastDrawnCards（再次抽时使用同一批）
+        session.setCanUndo(false);
+
+        result.setMessage("撤回成功：上次抽出的武将已返回军营");
+        result.setPlayer(lastPlayer);
+        result.setTurn(session.getCurrentTurn());
+        result.setFinished(false);
+        result.setDrawnCards(Collections.emptyList());
+        fillResultState(result, session);
+        return result;
+    }
+
+    /**
+     * 将战场武将置入休整区
+     * 进入休整区时，乐不思蜀状态消失
+     */
+    public void moveToRestArea(GameSession session, String player, String cardId) {
+        boolean isFirstPlayer = "first".equals(player);
+        List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
+        List<GeneralCard> restArea = isFirstPlayer ? session.getFirstPlayerRestArea() : session.getSecondPlayerRestArea();
+        Set<String> leBuSiShu = isFirstPlayer ? session.getFirstPlayerLeBuSiShu() : session.getSecondPlayerLeBuSiShu();
+
+        GeneralCard targetCard = null;
+        for (GeneralCard card : field) {
+            if (card.getId().equals(cardId)) {
+                targetCard = card;
+                break;
+            }
+        }
+        if (targetCard != null) {
+            field.remove(targetCard);
+            restArea.add(targetCard);
+            // 进入休整区时，乐不思蜀状态消失
+            leBuSiShu.remove(cardId);
+        }
+    }
+
+    /**
+     * 将休整区武将恢复至战场
+     */
+    public void restoreFromRestArea(GameSession session, String player, String cardId) {
+        boolean isFirstPlayer = "first".equals(player);
+        List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
+        List<GeneralCard> restArea = isFirstPlayer ? session.getFirstPlayerRestArea() : session.getSecondPlayerRestArea();
+
+        GeneralCard targetCard = null;
+        for (GeneralCard card : restArea) {
+            if (card.getId().equals(cardId)) {
+                targetCard = card;
+                break;
+            }
+        }
+        if (targetCard != null) {
+            restArea.remove(targetCard);
+            field.add(targetCard);
+        }
+    }
+
+    /**
+     * 将战场武将放回军营顶部（LIFO栈）
+     * 放回时移除乐不思蜀状态
+     */
+    public void moveToCampTop(GameSession session, String player, String cardId) {
+        boolean isFirstPlayer = "first".equals(player);
+        List<GeneralCard> field = isFirstPlayer ? session.getFirstPlayerField() : session.getSecondPlayerField();
+        List<GeneralCard> campTop = isFirstPlayer ? session.getFirstPlayerCampTop() : session.getSecondPlayerCampTop();
+        Set<String> leBuSiShu = isFirstPlayer ? session.getFirstPlayerLeBuSiShu() : session.getSecondPlayerLeBuSiShu();
+
+        GeneralCard targetCard = null;
+        for (GeneralCard card : field) {
+            if (card.getId().equals(cardId)) {
+                targetCard = card;
+                break;
+            }
+        }
+        if (targetCard != null) {
+            field.remove(targetCard);
+            campTop.add(targetCard); // LIFO: add to end, draw from end
+            leBuSiShu.remove(cardId); // remove lebusishu status
+        }
+    }
+
+    /**
+     * 切换乐不思蜀状态
+     */
+    public void toggleLeBuSiShu(GameSession session, String player, String cardId) {
+        boolean isFirstPlayer = "first".equals(player);
+        Set<String> leBuSiShu = isFirstPlayer ? session.getFirstPlayerLeBuSiShu() : session.getSecondPlayerLeBuSiShu();
+
+        if (leBuSiShu.contains(cardId)) {
+            leBuSiShu.remove(cardId);
+        } else {
+            leBuSiShu.add(cardId);
+        }
+    }
+
+    /**
+     * Check if "Xu Shu" exists on either player's battlefield
+     */
+    private boolean hasXuShuOnField(GameSession session) {
+        for (GeneralCard card : session.getFirstPlayerField()) {
+            if ("\u5F90\u5E9A".equals(card.getName())) return true;
+        }
+        for (GeneralCard card : session.getSecondPlayerField()) {
+            if ("\u5F90\u5E9A".equals(card.getName())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * 从军营顶部+军营中抽取武将（优先从campTop栈顶抽取，再从camp随机抽取）
+     */
+    private List<GeneralCard> drawFromCampAndTop(List<GeneralCard> camp, List<GeneralCard> campTop, int count) {
+        List<GeneralCard> drawn = new ArrayList<>();
+
+        // first, draw from campTop (LIFO: pop from end)
+        while (drawn.size() < count && !campTop.isEmpty()) {
+            drawn.add(campTop.remove(campTop.size() - 1));
+        }
+
+        // then, randomDraw from camp for remaining
+        int remaining = count - drawn.size();
+        if (remaining > 0 && !camp.isEmpty()) {
+            int actualRemaining = Math.min(remaining, camp.size());
+            List<GeneralCard> randomDrawn = randomDraw(camp, actualRemaining);
+            drawn.addAll(randomDrawn);
+        }
+
+        return drawn;
+    }
+
+    /**
+     * Randomly draw specified number of generals from camp
      */
     private List<GeneralCard> randomDraw(List<GeneralCard> camp, int count) {
         List<GeneralCard> result = new ArrayList<>();
@@ -147,9 +347,16 @@ public class SimulationService {
      * 填充结果中的状态信息
      */
     private void fillResultState(DrawResult result, GameSession session) {
-        result.setFirstPlayerCampRemaining(session.getFirstPlayerCamp().size());
-        result.setSecondPlayerCampRemaining(session.getSecondPlayerCamp().size());
+        result.setFirstPlayerCampRemaining(session.getFirstPlayerCamp().size() + session.getFirstPlayerCampTop().size());
+        result.setSecondPlayerCampRemaining(session.getSecondPlayerCamp().size() + session.getSecondPlayerCampTop().size());
         result.setFirstPlayerField(new ArrayList<>(session.getFirstPlayerField()));
         result.setSecondPlayerField(new ArrayList<>(session.getSecondPlayerField()));
+        result.setFirstPlayerRestArea(new ArrayList<>(session.getFirstPlayerRestArea()));
+        result.setSecondPlayerRestArea(new ArrayList<>(session.getSecondPlayerRestArea()));
+        result.setFirstPlayerLeBuSiShu(new HashSet<>(session.getFirstPlayerLeBuSiShu()));
+        result.setSecondPlayerLeBuSiShu(new HashSet<>(session.getSecondPlayerLeBuSiShu()));
+        result.setFirstPlayerCampTop(new ArrayList<>(session.getFirstPlayerCampTop()));
+        result.setSecondPlayerCampTop(new ArrayList<>(session.getSecondPlayerCampTop()));
+        result.setCanUndo(session.isCanUndo());
     }
 }

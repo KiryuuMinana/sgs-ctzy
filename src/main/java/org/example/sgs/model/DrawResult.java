@@ -1,6 +1,7 @@
 package org.example.sgs.model;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * 抽卡结果
@@ -33,6 +34,27 @@ public class DrawResult {
 
     /** 后手玩家已上阵武将列表 */
     private List<GeneralCard> secondPlayerField;
+
+    /** 先手玩家休整区武将列表 */
+    private List<GeneralCard> firstPlayerRestArea;
+
+    /** 后手玩家休整区武将列表 */
+    private List<GeneralCard> secondPlayerRestArea;
+
+    /** 先手玩家乐不思蜀武将ID集合 */
+    private Set<String> firstPlayerLeBuSiShu;
+
+    /** 后手玩家乐不思蜀武将ID集合 */
+    private Set<String> secondPlayerLeBuSiShu;
+
+    /** 是否可以撤回 */
+    private boolean canUndo;
+
+    /** 先手玩家军营顶部武将列表 */
+    private List<GeneralCard> firstPlayerCampTop;
+
+    /** 后手玩家军营顶部武将列表 */
+    private List<GeneralCard> secondPlayerCampTop;
 
     public DrawResult() {
     }
@@ -109,5 +131,61 @@ public class DrawResult {
 
     public void setSecondPlayerField(List<GeneralCard> secondPlayerField) {
         this.secondPlayerField = secondPlayerField;
+    }
+
+    public List<GeneralCard> getFirstPlayerRestArea() {
+        return firstPlayerRestArea;
+    }
+
+    public void setFirstPlayerRestArea(List<GeneralCard> firstPlayerRestArea) {
+        this.firstPlayerRestArea = firstPlayerRestArea;
+    }
+
+    public List<GeneralCard> getSecondPlayerRestArea() {
+        return secondPlayerRestArea;
+    }
+
+    public void setSecondPlayerRestArea(List<GeneralCard> secondPlayerRestArea) {
+        this.secondPlayerRestArea = secondPlayerRestArea;
+    }
+
+    public Set<String> getFirstPlayerLeBuSiShu() {
+        return firstPlayerLeBuSiShu;
+    }
+
+    public void setFirstPlayerLeBuSiShu(Set<String> firstPlayerLeBuSiShu) {
+        this.firstPlayerLeBuSiShu = firstPlayerLeBuSiShu;
+    }
+
+    public Set<String> getSecondPlayerLeBuSiShu() {
+        return secondPlayerLeBuSiShu;
+    }
+
+    public void setSecondPlayerLeBuSiShu(Set<String> secondPlayerLeBuSiShu) {
+        this.secondPlayerLeBuSiShu = secondPlayerLeBuSiShu;
+    }
+
+    public boolean isCanUndo() {
+        return canUndo;
+    }
+
+    public void setCanUndo(boolean canUndo) {
+        this.canUndo = canUndo;
+    }
+
+    public List<GeneralCard> getFirstPlayerCampTop() {
+        return firstPlayerCampTop;
+    }
+
+    public void setFirstPlayerCampTop(List<GeneralCard> firstPlayerCampTop) {
+        this.firstPlayerCampTop = firstPlayerCampTop;
+    }
+
+    public List<GeneralCard> getSecondPlayerCampTop() {
+        return secondPlayerCampTop;
+    }
+
+    public void setSecondPlayerCampTop(List<GeneralCard> secondPlayerCampTop) {
+        this.secondPlayerCampTop = secondPlayerCampTop;
     }
 }

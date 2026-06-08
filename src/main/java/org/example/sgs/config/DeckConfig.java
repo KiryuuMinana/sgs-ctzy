@@ -21,6 +21,9 @@ public class DeckConfig {
     @Autowired
     private ImageConfig imageConfig;
 
+    @Autowired
+    private SkillConfig skillConfig;
+
     /** 预组ID -> 预组 */
     private Map<String, PresetDeck> decks = new HashMap<>();
 
@@ -115,5 +118,21 @@ public class DeckConfig {
 
     public List<PresetDeck> getAllDecks() {
         return new ArrayList<>(decks.values());
+    }
+
+    /** 根据预组ID创建主帅武将卡 */
+    public GeneralCard createCommanderCard(String deckId) {
+        PresetDeck deck = decks.get(deckId);
+        if (deck == null) {
+            return null;
+        }
+        String commanderName = deck.getCommander();
+        String faction = deck.getFaction();
+        String commanderId = deckId + "_commander_" + commanderName;
+        GeneralCard commanderCard = new GeneralCard(commanderId, commanderName, faction,
+                imageConfig.getCardImagePath(commanderName), true);
+        commanderCard.setSkillDescription(skillConfig.getSkillDescription(commanderName));
+        commanderCard.setSkillImagePath(skillConfig.getSkillImagePath(commanderName));
+        return commanderCard;
     }
 }

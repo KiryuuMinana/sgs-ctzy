@@ -830,6 +830,375 @@
         .log-entry .log-faction-shu { color: var(--shu-color); }
         .log-entry .log-faction-wu { color: var(--wu-color); }
         .log-entry .log-faction-qun { color: var(--qun-color); }
+
+        /* ====== 卡牌悬浮操作按钮 ====== */
+        .card-hover-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-start;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+        }
+
+        .general-card:hover .card-hover-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .card-btn-x {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: rgba(217, 74, 74, 0.85);
+            color: #fff;
+            font-size: 14px;
+            line-height: 22px;
+            text-align: center;
+            cursor: pointer;
+            margin: 4px 4px 0 0;
+            transition: all 0.2s;
+            border: none;
+            font-weight: bold;
+        }
+
+        .card-btn-x:hover {
+            background: #d94a4a;
+            transform: scale(1.2);
+        }
+
+        .card-btn-lebusishu {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(212, 168, 67, 0.75);
+            color: #fff;
+            font-size: 10px;
+            line-height: 28px;
+            text-align: center;
+            cursor: pointer;
+            margin: 2px 4px 0 0;
+            transition: all 0.2s;
+            border: 2px solid rgba(212, 168, 67, 0.5);
+        }
+
+        .card-btn-lebusishu:hover {
+            background: var(--gold);
+            transform: scale(1.15);
+        }
+
+        .card-btn-camptop {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(74, 144, 217, 0.75);
+            color: #fff;
+            font-size: 12px;
+            line-height: 28px;
+            text-align: center;
+            cursor: pointer;
+            margin: 2px 4px 0 0;
+            transition: all 0.2s;
+            border: 2px solid rgba(74, 144, 217, 0.5);
+        }
+
+        .card-btn-camptop:hover {
+            background: #4a90d9;
+            transform: scale(1.15);
+        }
+
+        /* 乐不思蜀状态标记 */
+        .lebusishu-indicator {
+            position: absolute;
+            bottom: 30px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(212, 168, 67, 0.85);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            z-index: 5;
+            white-space: nowrap;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border: 1px solid var(--gold);
+            animation: lebuFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes lebuFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-3px); }
+        }
+
+        /* 主帅标记 */
+        .commander-crown {
+            position: absolute;
+            top: -6px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            z-index: 6;
+            color: var(--gold-light);
+            filter: drop-shadow(0 0 4px rgba(212,168,67,0.5));
+        }
+
+        /* ====== 休整区 ====== */
+        .rest-area-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(100, 100, 150, 0.2);
+        }
+
+        .rest-area-label {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            letter-spacing: 2px;
+            white-space: nowrap;
+        }
+
+        .rest-area-stack {
+            position: relative;
+            width: 80px;
+            height: 110px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .rest-area-stack:hover {
+            transform: translateY(-3px);
+        }
+
+        .rest-area-stack-empty {
+            width: 80px;
+            height: 110px;
+            border: 1px dashed rgba(100, 100, 150, 0.3);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.7em;
+            opacity: 0.4;
+        }
+
+        .rest-card-layer {
+            position: absolute;
+            width: 80px;
+            height: 110px;
+            border-radius: 6px;
+            border: 2px solid;
+            overflow: hidden;
+        }
+
+        .rest-area-count {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-left: 5px;
+        }
+
+        .rest-area-count .count-num {
+            color: var(--gold-light);
+            font-weight: bold;
+        }
+
+        /* ====== 弹窗 ====== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            animation: modalIn 0.2s ease-out;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-title {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 1.3em;
+            color: var(--gold-light);
+            text-align: center;
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px; right: 15px;
+            cursor: pointer;
+            font-size: 1.3em;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .rest-modal-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .rest-modal-card {
+            width: 100px;
+            height: 140px;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid;
+            cursor: default;
+            transition: transform 0.2s;
+        }
+
+        .rest-modal-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .rest-card-btn-restore {
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(74, 217, 122, 0.85);
+            color: #fff;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            z-index: 5;
+            border: none;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            opacity: 0;
+        }
+
+        .rest-modal-card:hover .rest-card-btn-restore {
+            opacity: 1;
+        }
+
+        .rest-card-btn-restore:hover {
+            background: #4ad97a;
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        /* ====== 技能弹窗 ====== */
+        .skill-modal-image {
+            width: 100%;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .skill-modal-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .skill-modal-placeholder {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 3em;
+            opacity: 0.5;
+        }
+
+        .skill-modal-desc {
+            text-align: center;
+            font-size: 0.95em;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+        }
+
+        /* ====== 撤回按钮 ====== */
+        .btn-undo {
+            background: linear-gradient(135deg, #5a4a2a, #8a7a5a);
+            color: #fff;
+            border: 1px solid rgba(212, 168, 67, 0.3);
+            box-shadow: 0 4px 15px rgba(212, 168, 67, 0.1);
+        }
+
+        .btn-undo:hover:not(:disabled) {
+            background: linear-gradient(135deg, #8a7a5a, #d4a843);
+            box-shadow: 0 6px 20px rgba(212, 168, 67, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .btn-undo:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* ====== draw count input ====== */
+        .draw-count-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .draw-count-input {
+            width: 40px;
+            height: 32px;
+            text-align: center;
+            background: rgba(40, 40, 70, 0.9);
+            color: var(--gold-light);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            outline: none;
+            -moz-appearance: textfield;
+        }
+
+        .draw-count-input::-webkit-inner-spin-button,
+        .draw-count-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .draw-count-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 8px rgba(212, 168, 67, 0.3);
+        }
+
+        .draw-count-label {
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -877,6 +1246,12 @@
             </div>
         </div>
         <div class="cards-area empty" id="firstFieldCards"></div>
+        <!-- 休整区 -->
+        <div class="rest-area-container" id="firstRestAreaContainer" style="display:none;">
+            <span class="rest-area-label">休整区：</span>
+            <div class="rest-area-stack" id="firstRestAreaStack" onclick="showRestAreaPopup('first')"></div>
+            <span class="rest-area-count"><span class="count-num" id="firstRestCount">0</span>将</span>
+        </div>
     </div>
 
     <!-- 战场分割线 -->
@@ -886,6 +1261,12 @@
     <div class="control-area">
         <button class="btn btn-start" id="btnStart" disabled>开启模拟</button>
         <button class="btn btn-next" id="btnNext" disabled>下一步</button>
+        <div class="draw-count-wrapper" id="drawCountWrapper" style="display:none;">
+            <span class="draw-count-label">抽</span>
+            <input type="number" class="draw-count-input" id="drawCountInput" min="1" max="4" value="2">
+            <span class="draw-count-label">张</span>
+        </div>
+        <button class="btn btn-undo" id="btnUndo" disabled>撤回上一次抽卡</button>
         <button class="btn btn-reset" id="btnReset" disabled>重置</button>
     </div>
 
@@ -931,6 +1312,12 @@
             </div>
         </div>
         <div class="cards-area empty" id="secondFieldCards"></div>
+        <!-- 休整区 -->
+        <div class="rest-area-container" id="secondRestAreaContainer" style="display:none;">
+            <span class="rest-area-label">休整区：</span>
+            <div class="rest-area-stack" id="secondRestAreaStack" onclick="showRestAreaPopup('second')"></div>
+            <span class="rest-area-count"><span class="count-num" id="secondRestCount">0</span>将</span>
+        </div>
     </div>
 </div>
 
@@ -941,6 +1328,9 @@
     let decks = [];
     let firstPlayerTotal = 39;
     let secondPlayerTotal = 39;
+    // 保存当前对局完整状态（用于前端渲染）
+    let currentGameState = null;
+    let canUndo = false;
 
     // ====== 初始化 ======
     document.addEventListener('DOMContentLoaded', function() {
@@ -992,19 +1382,27 @@
         btnStart.addEventListener('click', startSimulation);
         btnNext.addEventListener('click', nextStep);
         btnReset.addEventListener('click', resetSimulation);
+
+        document.getElementById('btnUndo').addEventListener('click', undoLastStep);
+
+        // draw count input: clamp 1-4 on change
+        document.getElementById('drawCountInput').addEventListener('change', function() {
+            let v = parseInt(this.value);
+            if (isNaN(v) || v < 1) v = 1;
+            if (v > 4) v = 4;
+            this.value = v;
+        });
     }
 
     function onDeckSelectChange() {
         const firstVal = document.getElementById('firstDeckSelect').value;
         const secondVal = document.getElementById('secondDeckSelect').value;
 
-        // 更新预组名称显示
         const firstDeck = decks.find(d => d.id === firstVal);
         const secondDeck = decks.find(d => d.id === secondVal);
         document.getElementById('firstDeckName').textContent = firstDeck ? firstDeck.name : '未选择预组';
         document.getElementById('secondDeckName').textContent = secondDeck ? secondDeck.name : '未选择预组';
 
-        // 启用/禁用开始按钮
         document.getElementById('btnStart').disabled = !(firstVal && secondVal);
     }
 
@@ -1032,43 +1430,46 @@
                 showToast(data.error, 'error');
                 return;
             }
-
+        
             simulationStarted = true;
             simulationFinished = false;
-
-            // 获取总数
+            canUndo = false;
+        
             firstPlayerTotal = data.firstPlayerCampSize;
             secondPlayerTotal = data.secondPlayerCampSize;
-
-            // 更新UI
+        
+            // 更新按钮状态
             document.getElementById('btnStart').disabled = true;
             document.getElementById('btnNext').disabled = false;
+            document.getElementById('btnUndo').disabled = true;
             document.getElementById('btnReset').disabled = false;
             document.getElementById('firstDeckSelect').disabled = true;
             document.getElementById('secondDeckSelect').disabled = true;
-
+            // show draw count input, default to 1 for first turn
+            document.getElementById('drawCountWrapper').style.display = 'flex';
+            document.getElementById('drawCountInput').value = 1;
+        
             // 显示统计
             document.getElementById('firstPlayerStats').style.display = 'flex';
             document.getElementById('secondPlayerStats').style.display = 'flex';
-            updateCampDisplay('first', data.firstPlayerCampSize, 0);
-            updateCampDisplay('second', data.secondPlayerCampSize, 0);
-
-            // 清空战场
-            document.getElementById('firstFieldCards').innerHTML = '';
-            document.getElementById('secondFieldCards').innerHTML = '';
-            document.getElementById('firstFieldCards').classList.add('empty');
-            document.getElementById('secondFieldCards').classList.add('empty');
-
-            // 更新状态栏
+            updateCampDisplay('first', data.firstPlayerCampSize, data.firstPlayerField ? data.firstPlayerField.length : 0);
+            updateCampDisplay('second', data.secondPlayerCampSize, data.secondPlayerField ? data.secondPlayerField.length : 0);
+        
+            // 渲染初始战场（包含主帅卡）
+            renderFullField('first', data.firstPlayerField || []);
+            renderFullField('second', data.secondPlayerField || []);
+        
+            // 渲染休整区
+            updateRestAreaDisplay('first', data.firstPlayerRestArea || [], data.firstPlayerLeBuSiShu || []);
+            updateRestAreaDisplay('second', data.secondPlayerRestArea || [], data.secondPlayerLeBuSiShu || []);
+        
             updateStatusBar(1, true, true);
-
-            // 标记先手活跃
             setActivePlayer('first');
-
+        
             // 显示战斗日志
             document.getElementById('battleLog').style.display = 'block';
             document.getElementById('logContent').innerHTML = '';
-
+        
             showToast('模拟开始！先手首回合仅上阵1名武将', 'success');
         })
         .catch(err => {
@@ -1079,11 +1480,13 @@
     // ====== 下一步 ======
     function nextStep() {
         if (!simulationStarted || simulationFinished) return;
-
+    
         document.getElementById('btnNext').disabled = true;
-
+    
         fetch('/api/simulation/next', {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drawCount: parseInt(document.getElementById('drawCountInput').value) || 2 })
         })
         .then(res => res.json())
         .then(data => {
@@ -1092,37 +1495,51 @@
                 document.getElementById('btnNext').disabled = false;
                 return;
             }
-
+    
             const player = data.player;
             const drawnCards = data.drawnCards || [];
-
-            // 添加抽卡特效
+    
+            // >5校验：如果message包含“弃置至5或5以下”，阻止操作
+            if (data.message && data.message.indexOf('弃置至5或5以下') !== -1) {
+                showToast(data.message, 'warning');
+                document.getElementById('btnNext').disabled = false;
+                document.getElementById('btnUndo').disabled = true;
+                return;
+            }
+    
             triggerDrawEffect();
-
-            // 渲染新抽出的卡
+    
             setTimeout(() => {
                 renderDrawnCards(player, drawnCards);
-
-                // 添加战斗日志
+    
                 addBattleLog(data.turn, player, drawnCards, data.finished);
-
-                // 更新统计
+    
                 updateCampDisplay('first', data.firstPlayerCampRemaining, data.firstPlayerField.length);
                 updateCampDisplay('second', data.secondPlayerCampRemaining, data.secondPlayerField.length);
-
-                // 更新状态栏
-                const nextIsFirst = player === 'second'; // 下一个是另一个玩家
+    
+                // 更新休整区和乐不思蜀
+                updateRestAreaDisplay('first', data.firstPlayerRestArea || [], data.firstPlayerLeBuSiShu || []);
+                updateRestAreaDisplay('second', data.secondPlayerRestArea || [], data.secondPlayerLeBuSiShu || []);
+    
+                // 更新撤回按钮
+                canUndo = data.canUndo || false;
+                document.getElementById('btnUndo').disabled = !canUndo;
+    
+                const nextIsFirst = player === 'second';
                 updateStatusBar(data.turn, nextIsFirst, false);
-
-                // 标记活跃玩家
+    
                 setActivePlayer(nextIsFirst ? 'first' : 'second');
-
+    
                 if (data.finished) {
                     simulationFinished = true;
                     document.getElementById('btnNext').disabled = true;
+                    document.getElementById('btnUndo').disabled = true;
+                    document.getElementById('drawCountWrapper').style.display = 'none';
                     showToast(data.message, 'warning');
                 } else {
                     document.getElementById('btnNext').disabled = false;
+                    // reset draw count to 2 after each draw
+                    document.getElementById('drawCountInput').value = 2;
                     const playerLabel = player === 'first' ? '先手' : '后手';
                     const cardNames = drawnCards.map(c => c.name).join('、');
                     showToast(playerLabel + '上阵：' + cardNames, 'info');
@@ -1144,35 +1561,60 @@
         .then(data => {
             simulationStarted = false;
             simulationFinished = false;
-
-            // 重置UI
+            canUndo = false;
+            currentGameState = null;
+    
             document.getElementById('btnStart').disabled = false;
             document.getElementById('btnNext').disabled = true;
+            document.getElementById('btnUndo').disabled = true;
             document.getElementById('btnReset').disabled = true;
             document.getElementById('firstDeckSelect').disabled = false;
             document.getElementById('secondDeckSelect').disabled = false;
-
+            document.getElementById('drawCountWrapper').style.display = 'none';
+    
             document.getElementById('firstFieldCards').innerHTML = '';
             document.getElementById('secondFieldCards').innerHTML = '';
             document.getElementById('firstFieldCards').classList.add('empty');
             document.getElementById('secondFieldCards').classList.add('empty');
-
+    
             document.getElementById('firstPlayerStats').style.display = 'none';
             document.getElementById('secondPlayerStats').style.display = 'none';
-
+            document.getElementById('firstRestAreaContainer').style.display = 'none';
+            document.getElementById('secondRestAreaContainer').style.display = 'none';
+    
             document.getElementById('statusBar').innerHTML = '<span>请为双方玩家选择预组后开始模拟</span>';
-
+    
             document.getElementById('firstPlayerZone').classList.remove('active');
             document.getElementById('secondPlayerZone').classList.remove('active');
-
-            // 隐藏战斗日志
+    
             document.getElementById('battleLog').style.display = 'none';
-
+    
+            // 关闭所有弹窗
+            const modal = document.getElementById('modalOverlay');
+            if (modal) modal.remove();
+    
             showToast('模拟已重置', 'info');
         })
         .catch(err => {
             showToast('重置失败: ' + err.message, 'error');
         });
+    }
+
+    // ====== 渲染完整战场 ======
+    function renderFullField(player, fieldCards) {
+        const containerId = player === 'first' ? 'firstFieldCards' : 'secondFieldCards';
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        if (fieldCards.length === 0) {
+            container.classList.add('empty');
+        } else {
+            container.classList.remove('empty');
+            fieldCards.forEach((card, i) => {
+                const cardEl = createCardElement(card, player, i);
+                cardEl.classList.remove('new-draw'); // 已有卡不播放高亮动画
+                container.appendChild(cardEl);
+            });
+        }
     }
 
     // ====== 渲染武将卡 ======
@@ -1182,36 +1624,37 @@
         container.classList.remove('empty');
 
         cards.forEach((card, index) => {
-            const cardEl = createCardElement(card, index);
+            const cardEl = createCardElement(card, player, index);
             container.appendChild(cardEl);
         });
     }
 
-    function createCardElement(cardData, delayIndex) {
+    function createCardElement(cardData, player, delayIndex) {
         const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
         const factionClass = factionMap[cardData.faction] || 'qun';
-
+    
         const cardEl = document.createElement('div');
         cardEl.className = 'general-card faction-' + factionClass + ' new-draw';
         cardEl.style.animationDelay = (delayIndex * 0.15) + 's';
-
+        cardEl.dataset.cardId = cardData.id;
+        cardEl.dataset.player = player;
+    
         const inner = document.createElement('div');
         inner.className = 'general-card-inner';
-
+    
         // 装饰边框
         const borderDecor = document.createElement('div');
         borderDecor.className = 'card-border-decor';
-
+    
         // 图片区域
         const imageArea = document.createElement('div');
         imageArea.className = 'card-image-area';
-
+    
         if (cardData.imagePath) {
             const img = document.createElement('img');
             img.src = cardData.imagePath;
             img.alt = cardData.name;
             img.onerror = function() {
-                // 图片加载失败时显示文字占位
                 this.style.display = 'none';
                 const placeholder = document.createElement('span');
                 placeholder.className = 'card-image-placeholder';
@@ -1225,32 +1668,84 @@
             placeholder.textContent = cardData.name.charAt(0);
             imageArea.appendChild(placeholder);
         }
-
+    
         // 名称区域
         const nameArea = document.createElement('div');
         nameArea.className = 'card-name-area';
-
+    
         const nameEl = document.createElement('div');
         nameEl.className = 'card-name';
         nameEl.textContent = cardData.name;
-
+    
         const factionTag = document.createElement('span');
         factionTag.className = 'card-faction-tag';
         factionTag.textContent = cardData.faction;
-
+    
         nameArea.appendChild(nameEl);
         nameArea.appendChild(factionTag);
-
+    
         inner.appendChild(borderDecor);
         inner.appendChild(imageArea);
         inner.appendChild(nameArea);
-        cardEl.appendChild(inner);
+    
+        // 【新增】主帅标记
+        if (cardData.isCommander) {
+            const crown = document.createElement('div');
+            crown.className = 'commander-crown';
+            crown.textContent = '♛';
+            cardEl.appendChild(crown);
+        }
+    
+        // 【新增】悬浮操作按钮覆盖层
+        const hoverOverlay = document.createElement('div');
+        hoverOverlay.className = 'card-hover-overlay';
+    
+        const btnX = document.createElement('button');
+        btnX.className = 'card-btn-x';
+        btnX.textContent = '✕';
+        btnX.title = '置入休整区';
+        btnX.onclick = function(e) {
+            e.stopPropagation();
+            moveToRestArea(player, cardData.id);
+        };
+    
+        const btnLebu = document.createElement('button');
+        btnLebu.className = 'card-btn-lebusishu';
+        btnLebu.textContent = '乐';
+        btnLebu.title = '乐不思蜀';
+        btnLebu.onclick = function(e) {
+            e.stopPropagation();
+            toggleLeBuSiShu(player, cardData.id);
+        };
 
+        const btnCampTop = document.createElement('button');
+        btnCampTop.className = 'card-btn-camptop';
+        btnCampTop.textContent = '\u2191';
+        btnCampTop.title = '\u653E\u56DE\u519B\u8425\u9876';
+        btnCampTop.onclick = function(e) {
+            e.stopPropagation();
+            moveToCampTop(player, cardData.id);
+        };
+    
+        hoverOverlay.appendChild(btnX);
+        hoverOverlay.appendChild(btnLebu);
+        hoverOverlay.appendChild(btnCampTop);
+    
+        cardEl.appendChild(inner);
+        cardEl.appendChild(hoverOverlay);
+    
+        // 【新增】点击武将卡显示技能弹窗
+        cardEl.addEventListener('click', function(e) {
+            // 如果点击的是操作按钮，不触发技能弹窗
+            if (e.target.classList.contains('card-btn-x') || e.target.classList.contains('card-btn-lebusishu') || e.target.classList.contains('card-btn-camptop')) return;
+            showSkillPopup(cardData);
+        });
+    
         // 移除高亮动画
         setTimeout(() => {
             cardEl.classList.remove('new-draw');
         }, 2000);
-
+    
         return cardEl;
     }
 
@@ -1335,6 +1830,348 @@
         toast.textContent = message;
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ====== 通用API调用（操作后同步刷新完整状态） ======
+    function callCardApi(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(res => res.json());
+    }
+
+    // ====== 撤回上一步 ======
+    function undoLastStep() {
+        if (!canUndo) {
+            showToast('无法撤回：没有可撤回的操作', 'warning');
+            return;
+        }
+
+        document.getElementById('btnUndo').disabled = true;
+        document.getElementById('btnNext').disabled = true;
+
+        fetch('/api/simulation/undo', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                document.getElementById('btnUndo').disabled = canUndo;
+                document.getElementById('btnNext').disabled = false;
+                return;
+            }
+
+            canUndo = false;
+            document.getElementById('btnUndo').disabled = true;
+            document.getElementById('btnNext').disabled = false;
+
+            // 同步渲染完整状态
+            syncFullState(data);
+
+            showToast(data.message, 'info');
+        })
+        .catch(err => {
+            showToast('撤回失败: ' + err.message, 'error');
+        });
+    }
+
+    // ====== 置入休整区 ======
+    function moveToRestArea(player, cardId) {
+        callCardApi('/api/simulation/card/rest', { player: player, cardId: cardId })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+            syncFullState(data);
+            showToast('武将已置入休整区', 'info');
+        })
+        .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+
+    // ====== 放回军营顶部 ======
+    function moveToCampTop(player, cardId) {
+        callCardApi('/api/simulation/card/camp-top', { player: player, cardId: cardId })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+            syncFullState(data);
+            showToast('武将已放回军营顶部', 'info');
+        })
+        .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+
+    // ====== 从休整区恢复至战场 ======
+    function restoreFromRestArea(player, cardId) {
+        callCardApi('/api/simulation/card/restore', { player: player, cardId: cardId })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+            syncFullState(data);
+            showToast('武将已恢复至战场', 'success');
+        })
+        .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+
+    // ====== 切换乐不思蜀 ======
+    function toggleLeBuSiShu(player, cardId) {
+        callCardApi('/api/simulation/card/lebusishu', { player: player, cardId: cardId })
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+            syncFullState(data);
+            showToast('乐不思蜀状态已切换', 'info');
+        })
+        .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+
+    // ====== 同步渲染完整状态 ======
+    function syncFullState(stateData) {
+        // 渲染战场
+        renderFullField('first', stateData.firstPlayerField || []);
+        renderFullField('second', stateData.secondPlayerField || []);
+
+        // 添加乐不思蜀标记
+        applyLeBuSiShuIndicators('first', stateData.firstPlayerLeBuSiShu || []);
+        applyLeBuSiShuIndicators('second', stateData.secondPlayerLeBuSiShu || []);
+
+        // 渲染休整区
+        updateRestAreaDisplay('first', stateData.firstPlayerRestArea || [], stateData.firstPlayerLeBuSiShu || []);
+        updateRestAreaDisplay('second', stateData.secondPlayerRestArea || [], stateData.secondPlayerLeBuSiShu || []);
+
+        // 更新统计
+        updateCampDisplay('first', stateData.firstPlayerCampRemaining, stateData.firstPlayerField.length);
+        updateCampDisplay('second', stateData.secondPlayerCampRemaining, stateData.secondPlayerField.length);
+
+        // 更新状态栏
+        updateStatusBar(stateData.currentTurn || 1, stateData.nextIsFirstPlayer, stateData.isFirstTurn);
+        setActivePlayer(stateData.nextIsFirstPlayer ? 'first' : 'second');
+
+        // 更新撤回状态
+        canUndo = stateData.canUndo || false;
+        document.getElementById('btnUndo').disabled = !canUndo;
+    }
+
+    // ====== 应用乐不思蜀标记到战场卡牌 ======
+    function applyLeBuSiShuIndicators(player, leBuSiShuIds) {
+        const containerId = player === 'first' ? 'firstFieldCards' : 'secondFieldCards';
+        const container = document.getElementById(containerId);
+        const cards = container.querySelectorAll('.general-card');
+
+        cards.forEach(cardEl => {
+            // 先移除旧标记
+            const oldIndicator = cardEl.querySelector('.lebusishu-indicator');
+            if (oldIndicator) oldIndicator.remove();
+
+            const cardId = cardEl.dataset.cardId;
+            if (leBuSiShuIds.indexOf(cardId) !== -1) {
+                const indicator = document.createElement('div');
+                indicator.className = 'lebusishu-indicator';
+                indicator.textContent = '乐不思蜀';
+                cardEl.appendChild(indicator);
+            }
+        });
+    }
+
+    // ====== 更新休整区显示 ======
+    function updateRestAreaDisplay(player, restCards, leBuSiShuIds) {
+        const containerId = player + 'RestAreaContainer';
+        const stackId = player + 'RestAreaStack';
+        const countId = player + 'RestCount';
+
+        const container = document.getElementById(containerId);
+        const stack = document.getElementById(stackId);
+
+        if (restCards.length === 0) {
+            container.style.display = 'none';
+            stack.innerHTML = '';
+            return;
+        }
+
+        container.style.display = 'flex';
+        document.getElementById(countId).textContent = restCards.length;
+
+        // 渲染叠卡效果：只显示最上方（最后一个）的卡牌全貌，其他用薄层表示
+        stack.innerHTML = '';
+        const topCard = restCards[restCards.length - 1];
+        const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+        const fc = factionMap[topCard.faction] || 'qun';
+
+        // 底层薄层
+        const layers = Math.min(restCards.length - 1, 5);
+        for (let i = 0; i < layers; i++) {
+            const layer = document.createElement('div');
+            layer.className = 'rest-card-layer faction-' + fc;
+            layer.style.bottom = (i * 4) + 'px';
+            layer.style.left = (i * 2) + 'px';
+            layer.style.opacity = '0.3';
+            layer.style.zIndex = i;
+            // 颜色
+            if (fc === 'wei') layer.style.borderColor = 'var(--wei-color)';
+            else if (fc === 'shu') layer.style.borderColor = 'var(--shu-color)';
+            else if (fc === 'wu') layer.style.borderColor = 'var(--wu-color)';
+            else layer.style.borderColor = 'var(--qun-color)';
+            stack.appendChild(layer);
+        }
+
+        // 最上方完整卡牌
+        const topLayer = document.createElement('div');
+        topLayer.className = 'rest-card-layer faction-' + fc;
+        topLayer.style.bottom = (layers * 4) + 'px';
+        topLayer.style.left = (layers * 2) + 'px';
+        topLayer.style.zIndex = layers;
+        topLayer.style.opacity = '1';
+        if (fc === 'wei') topLayer.style.borderColor = 'var(--wei-color)';
+        else if (fc === 'shu') topLayer.style.borderColor = 'var(--shu-color)';
+        else if (fc === 'wu') topLayer.style.borderColor = 'var(--wu-color)';
+        else topLayer.style.borderColor = 'var(--qun-color)';
+
+        // 卡内容
+        const imgArea = document.createElement('div');
+        imgArea.style.cssText = 'width:100%;height:70px;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+        if (topCard.imagePath) {
+            const img = document.createElement('img');
+            img.src = topCard.imagePath;
+            img.alt = topCard.name;
+            img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+            img.onerror = function() {
+                this.style.display = 'none';
+                const ph = document.createElement('span');
+                ph.className = 'card-image-placeholder';
+                ph.textContent = topCard.name.charAt(0);
+                imgArea.appendChild(ph);
+            };
+            imgArea.appendChild(img);
+        } else {
+            const ph = document.createElement('span');
+            ph.className = 'card-image-placeholder';
+            ph.textContent = topCard.name.charAt(0);
+            imgArea.appendChild(ph);
+        }
+
+        const nameArea = document.createElement('div');
+        nameArea.className = 'card-name-area';
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'card-name';
+        nameDiv.textContent = topCard.name;
+        nameArea.appendChild(nameDiv);
+
+        topLayer.appendChild(imgArea);
+        topLayer.appendChild(nameArea);
+        stack.appendChild(topLayer);
+
+        // 设置stack高度
+        stack.style.height = (110 + layers * 4) + 'px';
+    }
+
+    // ====== 休整区弹窗 ======
+    function showRestAreaPopup(player) {
+        fetch('/api/simulation/state')
+        .then(res => res.json())
+        .then(stateData => {
+            const restCardsData = player === 'first' ? (stateData.firstPlayerRestArea || []) : (stateData.secondPlayerRestArea || []);
+
+            if (restCardsData.length === 0) {
+                showToast('休整区暂无武将', 'info');
+                return;
+            }
+            
+            const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+            
+            let cardsHtml = '';
+            restCardsData.forEach(card => {
+                const fc = factionMap[card.faction] || 'qun';
+                const bgColor = fc === 'wei' ? '#1a2a4a' : fc === 'shu' ? '#3a1a1a' : fc === 'wu' ? '#1a3a1a' : '#2a1a3a';
+                const borderColor = fc === 'wei' ? 'var(--wei-color)' : fc === 'shu' ? 'var(--shu-color)' : fc === 'wu' ? 'var(--wu-color)' : 'var(--qun-color)';
+
+                let imgContent = '';
+                if (card.imagePath) {
+                    imgContent = '<img src="' + card.imagePath + '" alt="' + card.name + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<span class="card-image-placeholder" style="font-size:2em">' + card.name.charAt(0) + '</span>\'">';
+                } else {
+                    imgContent = '<span class="card-image-placeholder" style="font-size:2em">' + card.name.charAt(0) + '</span>';
+                }
+
+                cardsHtml += '<div class="rest-modal-card" style="border-color:' + borderColor + ';background:' + bgColor + ';" data-card-id="' + card.id + '">' +
+                    '<div style="width:100%;height:70px;display:flex;align-items:center;justify-content:center;overflow:hidden;">' + imgContent + '</div>' +
+                    '<div class="card-name-area"><div class="card-name">' + card.name + '</div></div>' +
+                    '<button class="rest-card-btn-restore" onclick="restoreFromRestAreaPopup(\'' + player + '\', \'' + card.id + '\')">恢复至战场</button>' +
+                    '</div>';
+            });
+
+            const playerName = player === 'first' ? '先手' : '后手';
+            showModal(playerName + '休整区', cardsHtml);
+        })
+        .catch(err => showToast('获取状态失败: ' + err.message, 'error'));
+    }
+
+    function restoreFromRestAreaPopup(player, cardId) {
+        closeModal();
+        restoreFromRestArea(player, cardId);
+    }
+
+    // ====== 技能弹窗 ======
+    function showSkillPopup(cardData) {
+        // 从API获取技能描述
+        fetch('/api/card/skill?name=' + encodeURIComponent(cardData.name))
+        .then(res => res.json())
+        .then(skillData => {
+            const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+            const fc = factionMap[cardData.faction] || 'qun';
+
+            let imageHtml = '';
+            if (skillData.imagePath) {
+                imageHtml = '<img src="' + skillData.imagePath + '" alt="技能" style="width:100%;height:100%;object-fit:cover;">';
+            } else if (cardData.imagePath) {
+                imageHtml = '<img src="' + cardData.imagePath + '" alt="' + cardData.name + '" style="width:100%;height:100%;object-fit:cover;">';
+            } else {
+                imageHtml = '<span class="skill-modal-placeholder" style="color:' + (fc === 'wei' ? 'var(--wei-color)' : fc === 'shu' ? 'var(--shu-color)' : fc === 'wu' ? 'var(--wu-color)' : 'var(--qun-color)') + '">' + cardData.name.charAt(0) + '</span>';
+            }
+
+            const commanderNote = cardData.isCommander ? '<div style="text-align:center;font-size:0.8em;color:var(--gold-light);margin-bottom:8px;">♛ 主帅</div>' : '';
+
+            const content = commanderNote +
+                '<div class="skill-modal-image faction-' + fc + '">' + imageHtml + '</div>' +
+                '<div style="text-align:center;font-family:\'Ma Shan Zheng\',cursive;font-size:1.2em;color:var(--gold-light);margin-bottom:10px;">' + cardData.name + '</div>' +
+                '<div class="skill-modal-desc">' + skillData.description + '</div>';
+
+            showModal(cardData.name + ' · 武将信息', content);
+        })
+        .catch(err => showToast('获取技能信息失败: ' + err.message, 'error'));
+    }
+
+    // ====== 弹窗工具 ======
+    function showModal(title, contentHtml) {
+        // 移除旧弹窗
+        const oldModal = document.getElementById('modalOverlay');
+        if (oldModal) oldModal.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.id = 'modalOverlay';
+        overlay.onclick = function(e) {
+            if (e.target === overlay) closeModal();
+        };
+
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.innerHTML = '<div class="modal-close" onclick="closeModal()">✕</div>' +
+            '<div class="modal-title">' + title + '</div>' +
+            '<div>' + contentHtml + '</div>';
+
+        overlay.appendChild(content);
+        document.body.appendChild(overlay);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('modalOverlay');
+        if (modal) modal.remove();
     }
 
     // ====== 背景粒子 ======
