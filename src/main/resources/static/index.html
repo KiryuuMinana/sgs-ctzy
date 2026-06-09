@@ -66,16 +66,25 @@
             pointer-events: none;
         }
 
-        /* ====== 主容器 ====== */
+        /* ====== 主容器（左中右网格布局） ====== */
         .app-container {
             position: relative;
             z-index: 1;
-            max-width: 1200px;
+            max-width: 1520px;
             margin: 0 auto;
             padding: 20px;
             min-height: 100vh;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 300px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* 主内容区：保持原有纵向flex布局 */
+        .main-content {
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
 
         /* ====== 标题区 ====== */
@@ -966,21 +975,54 @@
             box-shadow: 0 0 15px rgba(155, 89, 182, 0.6);
         }
 
-        /* ====== 骰子区域 ====== */
-        .dice-area {
+        /* ====== 右侧功能栏 ====== */
+        .right-sidebar {
+            position: sticky;
+            top: 20px;
             display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar-panel {
+            background: rgba(26, 26, 46, 0.85);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 18px;
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar-panel-title {
+            font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', cursive;
+            font-size: 1.15em;
+            color: var(--gold-light);
+            text-align: center;
+            margin-bottom: 14px;
+            letter-spacing: 3px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(212, 168, 67, 0.2);
+        }
+
+        /* ====== 骰子面板 ====== */
+        .dice-panel-body {
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 12px;
-            padding: 15px 0;
-            justify-content: center;
+            gap: 14px;
         }
 
         .dice-container {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             perspective: 600px;
             cursor: pointer;
+            transition: transform 0.2s;
         }
+
+        .dice-container:hover { transform: scale(1.08); }
+        .dice-container:active { transform: scale(0.95); }
 
         .dice {
             width: 100%;
@@ -1005,38 +1047,38 @@
 
         .dice-face {
             position: absolute;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
-            border: 2px solid #333;
-            border-radius: 8px;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #f8f4ec, #e8dcc8);
+            border: 2px solid #b8a070;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 2em;
             font-weight: bold;
-            color: #333;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            color: #5a3e1b;
+            box-shadow: inset 0 0 12px rgba(180, 150, 100, 0.25);
         }
 
-        .dice-face.front  { transform: translateZ(30px); }
-        .dice-face.back   { transform: rotateY(180deg) translateZ(30px); }
-        .dice-face.right  { transform: rotateY(90deg) translateZ(30px); }
-        .dice-face.left   { transform: rotateY(-90deg) translateZ(30px); }
-        .dice-face.top    { transform: rotateX(90deg) translateZ(30px); }
-        .dice-face.bottom { transform: rotateX(-90deg) translateZ(30px); }
+        .dice-face.front  { transform: translateZ(35px); }
+        .dice-face.back   { transform: rotateY(180deg) translateZ(35px); }
+        .dice-face.right  { transform: rotateY(90deg) translateZ(35px); }
+        .dice-face.left   { transform: rotateY(-90deg) translateZ(35px); }
+        .dice-face.top    { transform: rotateX(90deg) translateZ(35px); }
+        .dice-face.bottom { transform: rotateX(-90deg) translateZ(35px); }
 
-        .dice-select-wrapper {
+        .dice-config {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.9em;
+            font-size: 0.88em;
             color: var(--text-secondary);
         }
 
         .dice-select {
-            width: 60px;
-            height: 36px;
+            width: 65px;
+            height: 34px;
             background: rgba(40, 40, 70, 0.9);
             color: var(--gold-light);
             border: 1px solid var(--border-subtle);
@@ -1046,24 +1088,123 @@
             cursor: pointer;
             outline: none;
             transition: all 0.3s;
+            text-align: center;
         }
 
-        .dice-select:hover {
-            border-color: var(--gold);
-        }
-
+        .dice-select:hover,
         .dice-select:focus {
             border-color: var(--gold);
             box-shadow: 0 0 10px rgba(212, 168, 67, 0.3);
         }
 
-        .dice-result {
-            font-size: 1.5em;
+        .dice-result-box {
+            width: 100%;
+            text-align: center;
+            padding: 12px 8px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 10px;
+            border: 1px solid rgba(212, 168, 67, 0.15);
+            min-height: 64px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dice-result-label {
+            font-size: 0.78em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            letter-spacing: 2px;
+        }
+
+        .dice-result-value {
+            font-size: 2.6em;
             font-weight: bold;
             color: var(--gold-light);
-            min-width: 40px;
+            text-shadow: 0 0 18px rgba(212, 168, 67, 0.5);
+            line-height: 1;
+            transition: all 0.3s;
+        }
+
+        .dice-result-value.popped {
+            animation: resultPop 0.5s ease-out;
+        }
+
+        .dice-result-range {
+            font-size: 0.72em;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        @keyframes resultPop {
+            0% { transform: scale(0.4); opacity: 0; }
+            50% { transform: scale(1.35); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .dice-hint {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            opacity: 0.6;
             text-align: center;
-            text-shadow: 0 0 10px rgba(212, 168, 67, 0.5);
+        }
+
+        /* ====== 版权信息面板 ====== */
+        .credits-panel-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.88em;
+        }
+
+        .credit-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.5;
+        }
+
+        .credit-icon {
+            flex-shrink: 0;
+            width: 22px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .credit-label {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .credit-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .credit-value a {
+            color: var(--gold-light);
+            text-decoration: none;
+            transition: color 0.2s;
+            word-break: break-all;
+        }
+
+        .credit-value a:hover {
+            color: var(--gold);
+            text-decoration: underline;
+        }
+
+        .credit-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(212, 168, 67, 0.2), transparent);
+            margin: 2px 0;
+        }
+
+        .credit-qq-group {
+            color: var(--gold-light);
+            font-weight: bold;
+            letter-spacing: 1px;
         }
 
         /* 乐不思蜀状态标记 */
@@ -1396,6 +1537,7 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <div class="app-container">
+<div class="main-content">
     <!-- 标题 -->
     <div class="app-header">
         <h1 class="app-title">三国杀TCG · 抽卡模拟</h1>
@@ -1464,41 +1606,6 @@
         <button class="btn btn-reset" id="btnReset" disabled>重置</button>
     </div>
 
-    <!-- 骰子区域 -->
-    <div class="dice-area">
-        <div class="dice-container" id="diceContainer" onclick="rollDice()">
-            <div class="dice" id="dice">
-                <div class="dice-face front">1</div>
-                <div class="dice-face back">2</div>
-                <div class="dice-face right">3</div>
-                <div class="dice-face left">4</div>
-                <div class="dice-face top">5</div>
-                <div class="dice-face bottom">6</div>
-            </div>
-        </div>
-        <div class="dice-select-wrapper">
-            <span>随机范围：</span>
-            <select class="dice-select" id="diceMaxSelect">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4" selected>4</option>
-                <option value="5">5</option>
-                <option value="6">6</option>
-                <option value="7">7</option>
-                <option value="8">8</option>
-                <option value="9">9</option>
-                <option value="10">10</option>
-                <option value="11">11</option>
-                <option value="12">12</option>
-                <option value="13">13</option>
-                <option value="14">14</option>
-                <option value="15">15</option>
-            </select>
-        </div>
-        <div class="dice-result" id="diceResult">-</div>
-    </div>
-
     <!-- 状态栏 -->
     <div class="status-bar" id="statusBar">
         <span>请为双方玩家选择预组后开始模拟</span>
@@ -1548,6 +1655,80 @@
             <span class="rest-area-count"><span class="count-num" id="secondRestCount">0</span>将</span>
         </div>
     </div>
+</div><!-- /.main-content -->
+
+<!-- 右侧功能栏 -->
+<div class="right-sidebar">
+    <!-- 骰子面板 -->
+    <div class="sidebar-panel">
+        <div class="sidebar-panel-title">🎲 随机骰子</div>
+        <div class="dice-panel-body">
+            <div class="dice-container" id="diceContainer" onclick="rollDice()" title="点击投骰">
+                <div class="dice" id="dice">
+                    <div class="dice-face front">1</div>
+                    <div class="dice-face back">2</div>
+                    <div class="dice-face right">3</div>
+                    <div class="dice-face left">4</div>
+                    <div class="dice-face top">5</div>
+                    <div class="dice-face bottom">6</div>
+                </div>
+            </div>
+            <div class="dice-config">
+                <span>随机范围</span>
+                <select class="dice-select" id="diceMaxSelect">
+                    <option value="1">1</option><option value="2">2</option>
+                    <option value="3">3</option><option value="4" selected>4</option>
+                    <option value="5">5</option><option value="6">6</option>
+                    <option value="7">7</option><option value="8">8</option>
+                    <option value="9">9</option><option value="10">10</option>
+                    <option value="11">11</option><option value="12">12</option>
+                    <option value="13">13</option><option value="14">14</option>
+                    <option value="15">15</option>
+                </select>
+            </div>
+            <div class="dice-result-box">
+                <div class="dice-result-label">本次结果</div>
+                <div class="dice-result-value" id="diceResultValue">—</div>
+                <div class="dice-result-range" id="diceResultRange">[1 - 4]</div>
+            </div>
+            <div class="dice-hint">点击骰子投掷 · 范围可在上方调整</div>
+        </div>
+    </div>
+
+    <!-- 版权信息面板 -->
+    <div class="sidebar-panel">
+        <div class="sidebar-panel-title">✨ 制作信息</div>
+        <div class="credits-panel-body">
+            <div class="credit-row">
+                <span class="credit-icon">🎮</span>
+                <span class="credit-label">制作人：</span>
+                <span class="credit-value">雾生三柒</span>
+            </div>
+            <div class="credit-divider"></div>
+            <div class="credit-row">
+                <span class="credit-icon">📺</span>
+                <span class="credit-label">B站：</span>
+                <span class="credit-value">三七Minana</span>
+            </div>
+            <div class="credit-row">
+                <span class="credit-icon">🎬</span>
+                <span class="credit-label">直播间：</span>
+                <span class="credit-value"><a href="http://live.bilibili.com/1851764352" target="_blank" rel="noopener">live.bilibili.com/1851764352</a></span>
+            </div>
+            <div class="credit-row">
+                <span class="credit-icon">🆔</span>
+                <span class="credit-label">房间号：</span>
+                <span class="credit-value">1851764352</span>
+            </div>
+            <div class="credit-divider"></div>
+            <div class="credit-row">
+                <span class="credit-icon">💬</span>
+                <span class="credit-label">粉丝群：</span>
+                <span class="credit-value credit-qq-group">187962859</span>
+            </div>
+        </div>
+    </div>
+</div><!-- /.right-sidebar -->
 </div>
 
 <script>
@@ -2601,13 +2782,14 @@
         isDiceRolling = true;
 
         const dice = document.getElementById('dice');
-        const diceResult = document.getElementById('diceResult');
+        const resultValue = document.getElementById('diceResultValue');
+        const resultRange = document.getElementById('diceResultRange');
         const diceMaxSelect = document.getElementById('diceMaxSelect');
         const maxNum = parseInt(diceMaxSelect.value);
 
-        // 清除之前的结果高亮
-        diceResult.style.animation = '';
-        diceResult.style.transform = '';
+        // 重置结果状态
+        resultValue.classList.remove('popped');
+        resultValue.textContent = '...';
 
         // 添加滚动动画
         dice.classList.add('rolling');
@@ -2618,31 +2800,19 @@
         // 动画结束后显示结果
         setTimeout(() => {
             dice.classList.remove('rolling');
-            diceResult.textContent = randomNum;
-            
-            // 添加结果出现动画
-            diceResult.style.animation = 'resultPop 0.5s ease-out';
+            resultValue.textContent = randomNum;
+            resultRange.textContent = '[1 - ' + maxNum + ']';
+
+            // 结果弹出动画
+            resultValue.classList.add('popped');
             setTimeout(() => {
-                diceResult.style.animation = '';
+                resultValue.classList.remove('popped');
             }, 500);
-            
+
             isDiceRolling = false;
-            
-            // 显示结果提示
             showToast('骰子结果：' + randomNum + ' (1-' + maxNum + ')', 'success');
         }, 1500);
     }
-
-    // 添加结果弹出动画样式
-    const resultStyle = document.createElement('style');
-    resultStyle.textContent = `
-        @keyframes resultPop {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-    `;
-    document.head.appendChild(resultStyle);
 </script>
 
 </body>

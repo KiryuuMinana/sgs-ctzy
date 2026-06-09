@@ -79,6 +79,20 @@
   - `updateStatusBar()`中`第 X 回合`改为`当前状态`
   - 后端回合逻辑(turn计数)保持不变，仅前端展示不再体现回合数
 
+### v1.4.1 - 骰子移至右侧栏+版权信息+CSS Grid布局改造 (2026-06-08)
+
+- **布局改造**：`.app-container`从flex布局改为CSS Grid（`grid-template-columns: minmax(0, 1fr) 300px`），页面分为"主内容区+右侧栏"两列
+  - 新增`.main-content`包裹原有中心内容（标题/玩家区/控制区/状态栏/战斗日志等）
+  - 新增`.right-sidebar`右侧功能栏（sticky定位，跟随滚动）
+- **骰子移至右侧栏**：骰子区域从控制区下方移至右侧栏上方的"随机骰子"面板
+  - 骰子UI优化：古铜色渐变面(`#f8f4ec→#e8dcc8`)、hover/active缩放效果
+  - 新增独立结果展示框：`dice-result-box`含"本次结果"标签+2.6em金色大字(`diceResultValue`)+范围提示(`diceResultRange`)
+  - `rollDice()`适配新DOM（`diceResultValue`/`diceResultRange`），移除动态注入动画代码
+  - 新增`resultPop`弹出动画（`scale(0.4)→scale(1.35)→scale(1)`）直接写在CSS中
+- **新增制作信息面板**：右侧栏下方添加"制作信息"面板（`.credits-panel-body`）
+  - 含5行信息+emoji图标+金色渐变分隔线：制作人(雾生三柒)、B站(三七Minana)、直播间(可点击链接)、房间号(1851764352)、粉丝群(187962859)
+  - 面板使用玻璃拟态风格（`.sidebar-panel`统一背景+圆角+边框）
+
 ---
 
 ## 功能模块释义
@@ -170,11 +184,13 @@
 
 单文件HTML+CSS+JS，无外部框架依赖。
 
-**UI结构**:
-- 上方: 先手玩家区（金色主题）+ 休整区
-- 下方: 后手玩家区（紫色主题）+ 休整区
-- 中间: 控制按钮（开启模拟/下一步/抽卡数量输入/抽卡顺序下拉/撤回上一次抽卡/重置）+ 状态栏 + 战斗日志（记录所有操作）
-- 中间下方: 骰子区域（3D骰子+随机范围下拉框1-15+结果展示）
+**UI结构（v1.4.1布局）**:
+- 整体采用CSS Grid两列布局：主内容区（自适应）+ 右侧功能栏（300px固定）
+- 主内容区上方: 先手玩家区（金色主题）+ 休整区
+- 主内容区下方: 后手玩家区（紫色主题）+ 休整区
+- 主内容区中间: 控制按钮（开启模拟/下一步/抽卡数量输入/抽卡顺序下拉/撤回上一次抽卡/重置）+ 状态栏 + 战斗日志（记录所有操作）
+- 右侧栏上方: 骰子面板（3D骰子+随机范围下拉框1-15+独立结果展示框），sticky定位
+- 右侧栏下方: 制作信息面板（制作人/B站/直播间/房间号/粉丝群）
 - 背景: Canvas粒子动画 + CSS径向渐变
 - 弹窗: 休整区详情弹窗/武将技能弹窗/休整区图片弹窗（共用modal-overlay）
 
@@ -185,11 +201,12 @@
   - `.horizontal` CSS类: `transform: rotate(90deg)`，`transform-origin: center center`
   - 横置时卡牌内层加紫色发光阴影
   - `cardEl.addEventListener('click')`需过滤`card-btn-horizontal`，避免误触发技能弹窗
-- **骰子区域**: `.dice-area`包含3D骰子+下拉框+结果数字
+- **骰子面板（右侧栏）**: `.sidebar-panel`内含3D骰子+下拉框+独立结果展示框
   - `rollDice()`: 读取`#diceMaxSelect`值作为上限，`Math.floor(Math.random() * maxNum) + 1`生成结果
   - `#dice`添加`.rolling`类触发`@keyframes diceRoll`(1.5s)动画
-  - 结果展示`#diceResult`使用`@keyframes resultPop`弹出动画
+  - 结果展示`#diceResultValue`使用`@keyframes resultPop`弹出动画（直接写在CSS中，不再动态注入）
   - `isDiceRolling`标志防止动画期间重复点击
+  - 结果展示框显示"本次结果"标签+金色大字+范围提示`[1 - x]`
 - **休整区图片弹窗**: `showRestCardPopup(cardName, cardFaction, cardImagePath)`复用技能弹窗样式展示武将图片
   - 在`moveToRestArea()`成功后调用，不依赖skill API
 - **战报格式**: `addBattleLog()`移除`[第X回合]`前缀；`updateStatusBar()`显示"当前状态"而非回合数
@@ -263,6 +280,11 @@
 - 注意: 横置状态不持久化（刷新后丢失），仅作为视觉标记；卡牌旋转90°时需保证`transform-origin: center center`防止位置偏移
 
 ### 修改骰子功能时
-- 影响文件: `static/index.html`(rollDice函数/.dice-area/3D骰子CSS)
+- 影响文件: `static/index.html`(rollDice函数/.sidebar-panel骰子面板/3D骰子CSS)
 - 关联影响: 纯前端工具，不涉及后端和游戏状态；骰子与抽卡/武将等功能完全独立
-- 注意: 下拉框值范围1-15，默认选中4；`isDiceRolling`标志需在动画结束后重置；骰子6面使用CSS `translateZ(30px)`+`rotateY/X`组合定位
+- 注意: 下拉框值范围1-15，默认选中4；`isDiceRolling`标志需在动画结束后重置；骰子6面使用CSS `translateZ(30px)`+`rotateY/X`组合定位；结果展示使用`#diceResultValue`(值)+`#diceResultRange`(范围)两个独立元素
+
+### 修改页面布局时
+- 影响文件: `static/index.html`(.app-container/.main-content/.right-sidebar CSS)
+- 关联影响: 主容器使用CSS Grid(`grid-template-columns: minmax(0, 1fr) 300px`)，所有中心内容需在`.main-content`内，所有辅助功能需在`.right-sidebar`内
+- 注意: 右侧栏使用`position: sticky; top: 20px`跟随滚动；新增辅助功能面板应使用`.sidebar-panel`统一样式（玻璃拟态风格）；修改列宽时需同步调整`max-width: 1520px`
