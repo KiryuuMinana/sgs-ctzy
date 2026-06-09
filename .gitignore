@@ -34,3 +34,12 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Build Output ###
+out/
+
+### Node modules ###
+node_modules/
+
+### Mobile build ###
+mobile/

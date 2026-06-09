@@ -54,12 +54,30 @@
 ### v1.3.1 - Bug修复：武将数量异常+抽卡顺序控制 (2026-06-08)
 
 - **严重bug修复**：修复撤回操作导致武将数量增加的bug（军营出现41张卡）
-  - **bug根源**：undoLastStep()使用field.removeAll(lastDrawn)时，如果卡牌已被移到campTop/campBottom/restArea，removeAll无操作，但后续循环又会将卡牌放回，导致重复添加
+  - **bug根源**：undoLastStep()使用field.removeAll(lastDrawn)时，如果卡牌已被移到campTop/campBottom/restArea，removeAll无操作，但后续循环又将卡牌放回，导致重复添加
   - **修复方案**：undoLastStep()改为先检查卡牌是否仍在field中，只移除并放回仍在field中的卡牌；已移到其他区域的卡牌不再重复放回
 - **新增抽卡顺序控制**："下一步"旁新增下拉框，可选择"先手抽卡"/"后手抽卡"，默认"默认轮流"
   - 选择后抽一次卡自动恢复为"默认轮流"
   - 后端nextStep()接受forcePlayer参数，抽卡后清除forcePlayerSpecified标记并切换nextIsFirstPlayer
   - GameSession新增forcePlayerSpecified字段追踪是否手动指定了玩家
+
+### v1.4.0 - 横置功能+骰子+休整区弹窗+战报格式调整 (2026-06-08)
+
+- **新增横置功能**：武将卡悬浮显示"↻"按钮，点击切换横置状态，横置时武将卡旋转90°显示，再次点击恢复
+  - 纯前端状态，不持久化到后端，通过CSS类`.horizontal`+`transform: rotate(90deg)`实现
+  - 按钮样式：紫色圆形，与"乐"按钮色系区分
+- **新增骰子功能**：控制区下方新增骰子区域，含3D骰子+下拉框(1-15)+结果展示
+  - 点击骰子触发旋转动画(1.5s)，从[1,x]随机抽取整数(x为用户选择的数字，默认4)
+  - 骰子使用CSS 3D transform+`@keyframes diceRoll`实现6面旋转效果
+  - 结果数字带弹出动画(`@keyframes resultPop`)
+  - 全局变量`isDiceRolling`防止连续点击
+- **调整休整区弹窗**：武将点击×进入休整区后，立即触发查看图片弹窗(`showRestCardPopup`)
+  - 弹窗内容与技能弹窗类似：武将图片+名称+"武将已置入休整区"提示
+  - `moveToRestArea()`函数在API调用成功后调用`showRestCardPopup()`
+- **调整战报格式**：移除"回合"概念
+  - `addBattleLog()`不再显示`[第X回合]`前缀
+  - `updateStatusBar()`中`第 X 回合`改为`当前状态`
+  - 后端回合逻辑(turn计数)保持不变，仅前端展示不再体现回合数
 
 ---
 
@@ -155,29 +173,46 @@
 **UI结构**:
 - 上方: 先手玩家区（金色主题）+ 休整区
 - 下方: 后手玩家区（紫色主题）+ 休整区
-- 中间: 控制按钮（开启模拟/下一步/抽卡数量输入/撤回上一次抽卡/重置）+ 状态栏 + 战斗日志（记录所有操作）
+- 中间: 控制按钮（开启模拟/下一步/抽卡数量输入/抽卡顺序下拉/撤回上一次抽卡/重置）+ 状态栏 + 战斗日志（记录所有操作）
+- 中间下方: 骰子区域（3D骰子+随机范围下拉框1-15+结果展示）
 - 背景: Canvas粒子动画 + CSS径向渐变
-- 弹窗: 休整区详情弹窗/武将技能弹窗（共用modal-overlay）
+- 弹窗: 休整区详情弹窗/武将技能弹窗/休整区图片弹窗（共用modal-overlay）
 
 **势力颜色映射**: 魏=#4a90d9(蓝), 蜀=#d94a4a(红), 吴=#4ad97a(绿), 群=#9b59b6(紫)
+
+**新增功能（v1.4.0）**:
+- **横置按钮**: `createCardElement()`中新增`.card-btn-horizontal`按钮(紫色圆形，旋转图标`↻`)，点击调用`toggleHorizontal(cardEl)`
+  - `.horizontal` CSS类: `transform: rotate(90deg)`，`transform-origin: center center`
+  - 横置时卡牌内层加紫色发光阴影
+  - `cardEl.addEventListener('click')`需过滤`card-btn-horizontal`，避免误触发技能弹窗
+- **骰子区域**: `.dice-area`包含3D骰子+下拉框+结果数字
+  - `rollDice()`: 读取`#diceMaxSelect`值作为上限，`Math.floor(Math.random() * maxNum) + 1`生成结果
+  - `#dice`添加`.rolling`类触发`@keyframes diceRoll`(1.5s)动画
+  - 结果展示`#diceResult`使用`@keyframes resultPop`弹出动画
+  - `isDiceRolling`标志防止动画期间重复点击
+- **休整区图片弹窗**: `showRestCardPopup(cardName, cardFaction, cardImagePath)`复用技能弹窗样式展示武将图片
+  - 在`moveToRestArea()`成功后调用，不依赖skill API
+- **战报格式**: `addBattleLog()`移除`[第X回合]`前缀；`updateStatusBar()`显示"当前状态"而非回合数
 
 **前端交互流程**:
 1. 下拉框选预组 → 启用"开启模拟"按钮
 2. 点击"开启模拟" → 禁用下拉框，启用"下一步"；主帅卡自动出现在战场
-3. 悬浮战场武将卡 → 显示"x"(置入休整区)、"乐"(乐不思蜀)、"↑"(放回军营顶)、"↓"(放回军营底)按钮
-4. 点击"x" → 调用rest API → 武将置入休整区，乐不思蜀状态消失，战报记录
+3. 悬浮战场武将卡 → 显示"x"(置入休整区)、"乐"(乐不思蜀)、"↑"(放回军营顶)、"↓"(放回军营底)、"↻"(横置)按钮
+4. 点击"x" → 调用rest API → 武将置入休整区，乐不思蜀状态消失，战报记录，**并立即弹出休整区图片弹窗**
 5. 点击"乐" → 调用lebusishu API → 切换乐不思蜀标记，卡牌显示浮动标签，战报记录
-6. 点击武将卡 → 调用skill API → 弹窗显示技能描述+图片
-7. 点击休整区叠卡 → 弹窗显示所有休整区武将，悬浮显示"恢复至战场"按钮，战报记录
-8. 点击"下一步" → 若双方战场任一>5且无徐庶 → 提示"请先将战场上武将卡弃置至5或5以下"
-9. 点击"下一步" → POST /next {drawCount:N} → 渲染卡牌动画+更新状态+添加日志+启用撤回；抽卡数量输入框重置为2
-10. 点击"↑"按钮 → 调用camp-top API → 武将放回军营顶部，下次抽卡优先抽出；同时禁用撤回按钮，战报记录
-11. 点击"↓"按钮 → 调用camp-bottom API → 武将放回军营底部，最后才被抽出；同时禁用撤回按钮，战报记录
-12. 点击"撤回上一次抽卡" → POST /undo → 撤回上次抽卡，来自campTop的武将放回campTop，来自campBottom的放回campBottom，其他放回军营；再次"下一步"抽出同一批武将，战报记录
-12. 武将不足 → 禁用"下一步"，Toast提示
-13. "重置" → 清空所有状态
+6. 点击"↻" → 切换卡牌`.horizontal`类，旋转90°显示，Toast提示
+7. 点击武将卡 → 调用skill API → 弹窗显示技能描述+图片
+8. 点击休整区叠卡 → 弹窗显示所有休整区武将，悬浮显示"恢复至战场"按钮，战报记录
+9. 点击"下一步" → 若双方战场任一>5且无徐庶 → 提示"请先将战场上武将卡弃置至5或5以下"
+10. 点击"下一步" → POST /next {drawCount:N} → 渲染卡牌动画+更新状态+添加日志+启用撤回；抽卡数量输入框重置为2
+11. 点击"↑"按钮 → 调用camp-top API → 武将放回军营顶部，下次抽卡优先抽出；同时禁用撤回按钮，战报记录
+12. 点击"↓"按钮 → 调用camp-bottom API → 武将放回军营底部，最后才被抽出；同时禁用撤回按钮，战报记录
+13. 点击"撤回上一次抽卡" → POST /undo → 撤回上次抽卡，来自campTop的武将放回campTop，来自campBottom的放回campBottom，其他放回军营；再次"下一步"抽出同一批武将，战报记录
+14. 点击骰子 → 读取下拉框值 → 播放1.5s旋转动画 → 显示随机结果 + Toast提示
+15. 武将不足 → 禁用"下一步"，Toast提示
+16. "重置" → 清空所有状态
 
-**动画效果**: 卡牌翻转出现(cardAppear) + 新卡发光(cardGlow) + 全屏闪光(drawFlash) + 日志滑入(logAppear) + 乐不思蜀浮动(lebuFloat)
+**动画效果**: 卡牌翻转出现(cardAppear) + 新卡发光(cardGlow) + 全屏闪光(drawFlash) + 日志滑入(logAppear) + 乐不思蜀浮动(lebuFloat) + 骰子旋转(diceRoll) + 结果弹出(resultPop)
 
 ---
 
@@ -220,4 +255,14 @@
 ### 修改战报功能时
 - 影响文件: `static/index.html`(addBattleLog函数)
 - 关联影响: 所有操作函数(nextStep/undoLastStep/moveToCampTop/moveToCampBottom/moveToRestArea/restoreFromRestArea/toggleLeBuSiShu)需调用addBattleLog记录日志
-- 注意: addBattleLog支持7种操作类型(draw/undo/campTop/campBottom/lebusishu/rest/restore)，每种类型有不同的显示样式
+- 注意: addBattleLog支持7种操作类型(draw/undo/campTop/campBottom/lebusishu/rest/restore)，每种类型有不同的显示样式；v1.4.0起不再显示`[第X回合]`前缀
+
+### 修改横置功能时
+- 影响文件: `static/index.html`(createCardElement/toggleHorizontal/.horizontal CSS)
+- 关联影响: 纯前端状态，不涉及后端；但`cardEl.addEventListener('click')`需过滤`card-btn-horizontal`避免误触发技能弹窗
+- 注意: 横置状态不持久化（刷新后丢失），仅作为视觉标记；卡牌旋转90°时需保证`transform-origin: center center`防止位置偏移
+
+### 修改骰子功能时
+- 影响文件: `static/index.html`(rollDice函数/.dice-area/3D骰子CSS)
+- 关联影响: 纯前端工具，不涉及后端和游戏状态；骰子与抽卡/武将等功能完全独立
+- 注意: 下拉框值范围1-15，默认选中4；`isDiceRolling`标志需在动画结束后重置；骰子6面使用CSS `translateZ(30px)`+`rotateY/X`组合定位

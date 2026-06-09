@@ -936,6 +936,136 @@
             transform: scale(1.15);
         }
 
+        /* 横置按钮 */
+        .card-btn-horizontal {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: rgba(155, 89, 182, 0.75);
+            color: #fff;
+            font-size: 14px;
+            line-height: 28px;
+            text-align: center;
+            cursor: pointer;
+            margin: 2px 4px 0 0;
+            transition: all 0.2s;
+            border: 2px solid rgba(155, 89, 182, 0.5);
+        }
+
+        .card-btn-horizontal:hover {
+            background: #9b59b6;
+            transform: scale(1.15);
+        }
+
+        /* 横置状态 */
+        .general-card.horizontal {
+            transform: rotate(90deg);
+            transform-origin: center center;
+        }
+
+        .general-card.horizontal .general-card-inner {
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.6);
+        }
+
+        /* ====== 骰子区域 ====== */
+        .dice-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 0;
+            justify-content: center;
+        }
+
+        .dice-container {
+            width: 60px;
+            height: 60px;
+            perspective: 600px;
+            cursor: pointer;
+        }
+
+        .dice {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.3s ease-out;
+        }
+
+        .dice.rolling {
+            animation: diceRoll 1.5s ease-out;
+        }
+
+        @keyframes diceRoll {
+            0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            20% { transform: rotateX(180deg) rotateY(90deg) rotateZ(45deg); }
+            40% { transform: rotateX(360deg) rotateY(180deg) rotateZ(90deg); }
+            60% { transform: rotateX(540deg) rotateY(270deg) rotateZ(135deg); }
+            80% { transform: rotateX(680deg) rotateY(350deg) rotateZ(175deg); }
+            100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
+        }
+
+        .dice-face {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+            border: 2px solid #333;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .dice-face.front  { transform: translateZ(30px); }
+        .dice-face.back   { transform: rotateY(180deg) translateZ(30px); }
+        .dice-face.right  { transform: rotateY(90deg) translateZ(30px); }
+        .dice-face.left   { transform: rotateY(-90deg) translateZ(30px); }
+        .dice-face.top    { transform: rotateX(90deg) translateZ(30px); }
+        .dice-face.bottom { transform: rotateX(-90deg) translateZ(30px); }
+
+        .dice-select-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .dice-select {
+            width: 60px;
+            height: 36px;
+            background: rgba(40, 40, 70, 0.9);
+            color: var(--gold-light);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .dice-select:hover {
+            border-color: var(--gold);
+        }
+
+        .dice-select:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(212, 168, 67, 0.3);
+        }
+
+        .dice-result {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--gold-light);
+            min-width: 40px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(212, 168, 67, 0.5);
+        }
+
         /* 乐不思蜀状态标记 */
         .lebusishu-indicator {
             position: absolute;
@@ -1332,6 +1462,41 @@
         </div>
         <button class="btn btn-undo" id="btnUndo" disabled>撤回上一次抽卡</button>
         <button class="btn btn-reset" id="btnReset" disabled>重置</button>
+    </div>
+
+    <!-- 骰子区域 -->
+    <div class="dice-area">
+        <div class="dice-container" id="diceContainer" onclick="rollDice()">
+            <div class="dice" id="dice">
+                <div class="dice-face front">1</div>
+                <div class="dice-face back">2</div>
+                <div class="dice-face right">3</div>
+                <div class="dice-face left">4</div>
+                <div class="dice-face top">5</div>
+                <div class="dice-face bottom">6</div>
+            </div>
+        </div>
+        <div class="dice-select-wrapper">
+            <span>随机范围：</span>
+            <select class="dice-select" id="diceMaxSelect">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+                <option value="11">11</option>
+                <option value="12">12</option>
+                <option value="13">13</option>
+                <option value="14">14</option>
+                <option value="15">15</option>
+            </select>
+        </div>
+        <div class="dice-result" id="diceResult">-</div>
     </div>
 
     <!-- 状态栏 -->
@@ -1812,11 +1977,21 @@
             e.stopPropagation();
             moveToCampBottom(player, cardData.id);
         };
-    
+
+        const btnHorizontal = document.createElement('button');
+        btnHorizontal.className = 'card-btn-horizontal';
+        btnHorizontal.textContent = '\u21BB'; // 旋转图标
+        btnHorizontal.title = '\u6A2A\u7F6E';
+        btnHorizontal.onclick = function(e) {
+            e.stopPropagation();
+            toggleHorizontal(cardEl);
+        };
+
         hoverOverlay.appendChild(btnX);
         hoverOverlay.appendChild(btnLebu);
         hoverOverlay.appendChild(btnCampTop);
         hoverOverlay.appendChild(btnCampBottom);
+        hoverOverlay.appendChild(btnHorizontal);
     
         cardEl.appendChild(inner);
         cardEl.appendChild(hoverOverlay);
@@ -1824,7 +1999,11 @@
         // 【新增】点击武将卡显示技能弹窗
         cardEl.addEventListener('click', function(e) {
             // 如果点击的是操作按钮，不触发技能弹窗
-            if (e.target.classList.contains('card-btn-x') || e.target.classList.contains('card-btn-lebusishu') || e.target.classList.contains('card-btn-camptop') || e.target.classList.contains('card-btn-campbottom')) return;
+            if (e.target.classList.contains('card-btn-x') || 
+                e.target.classList.contains('card-btn-lebusishu') || 
+                e.target.classList.contains('card-btn-camptop') || 
+                e.target.classList.contains('card-btn-campbottom') ||
+                e.target.classList.contains('card-btn-horizontal')) return;
             showSkillPopup(cardData);
         });
     
@@ -1877,8 +2056,8 @@
             actionText = '恢复至战场：<span class="' + factionClass + '">' + details.name + '</span>';
         }
 
-        entry.innerHTML = '<span class="log-turn">[第' + turn + '回合]</span> ' +
-            '<span class="' + playerClass + '">' + playerLabel + '</span>' +
+        // 不显示回合数，只显示玩家和操作
+        entry.innerHTML = '<span class="' + playerClass + '">' + playerLabel + '</span>' +
             ' ' + actionText;
 
         logContent.appendChild(entry);
@@ -1901,7 +2080,7 @@
     // ====== 更新状态栏 ======
     function updateStatusBar(turn, nextIsFirst, isFirstTurn) {
         const statusBar = document.getElementById('statusBar');
-        let html = '<span class="turn-info">第 ' + turn + ' 回合</span>';
+        let html = '<span class="turn-info">当前状态</span>';
 
         if (isFirstTurn && nextIsFirst) {
             html += '<span class="next-action first">先手首回合 · 上阵1名武将</span>';
@@ -1992,7 +2171,10 @@
         const cardEl = document.querySelector('.general-card[data-card-id="' + cardId + '"]');
         const cardName = cardEl ? cardEl.querySelector('.card-name').textContent : '';
         const cardFaction = cardEl ? cardEl.querySelector('.card-faction-tag').textContent : '';
-        
+        // 获取卡牌图片路径（用于弹窗显示）
+        const cardImgEl = cardEl ? cardEl.querySelector('.card-image-area img') : null;
+        const cardImagePath = cardImgEl ? cardImgEl.src : null;
+            
         callCardApi('/api/simulation/card/rest', { player: player, cardId: cardId })
         .then(data => {
             if (data.error) {
@@ -2002,8 +2184,30 @@
             syncFullState(data);
             addBattleLog(data.currentTurn, player, 'rest', { name: cardName, faction: cardFaction }, null);
             showToast('武将已置入休整区', 'info');
+                
+            // 进入休整区后立刻触发查看图片弹窗
+            showRestCardPopup(cardName, cardFaction, cardImagePath);
         })
         .catch(err => showToast('操作失败: ' + err.message, 'error'));
+    }
+    
+    // ====== 显示休整区卡牌图片弹窗 ======
+    function showRestCardPopup(cardName, cardFaction, cardImagePath) {
+        const factionMap = { '魏': 'wei', '蜀': 'shu', '吴': 'wu', '群': 'qun' };
+        const fc = factionMap[cardFaction] || 'qun';
+    
+        let imageHtml = '';
+        if (cardImagePath) {
+            imageHtml = '<img src="' + cardImagePath + '" alt="' + cardName + '" style="width:100%;height:auto;max-height:400px;object-fit:contain;">';
+        } else {
+            imageHtml = '<span class="skill-modal-placeholder" style="color:' + (fc === 'wei' ? 'var(--wei-color)' : fc === 'shu' ? 'var(--shu-color)' : fc === 'wu' ? 'var(--wu-color)' : 'var(--qun-color)') + '">' + cardName.charAt(0) + '</span>';
+        }
+    
+        const content = '<div class="skill-modal-image faction-' + fc + '">' + imageHtml + '</div>' +
+            '<div style="text-align:center;font-family:\'Ma Shan Zheng\',cursive;font-size:1.2em;color:var(--gold-light);">' + cardName + '</div>' +
+            '<div style="text-align:center;margin-top:8px;font-size:0.9em;color:var(--text-secondary);">武将已置入休整区</div>';
+    
+        showModal(cardName + ' · 休整区', content);
     }
 
     // ====== 放回军营顶部 ======
@@ -2382,6 +2586,63 @@
 
         animate();
     }
+
+    // ====== 横置切换 ======
+    function toggleHorizontal(cardEl) {
+        cardEl.classList.toggle('horizontal');
+        const isHorizontal = cardEl.classList.contains('horizontal');
+        showToast(isHorizontal ? '武将已横置' : '武将已复原', 'info');
+    }
+
+    // ====== 骰子滚动 ======
+    let isDiceRolling = false;
+    function rollDice() {
+        if (isDiceRolling) return;
+        isDiceRolling = true;
+
+        const dice = document.getElementById('dice');
+        const diceResult = document.getElementById('diceResult');
+        const diceMaxSelect = document.getElementById('diceMaxSelect');
+        const maxNum = parseInt(diceMaxSelect.value);
+
+        // 清除之前的结果高亮
+        diceResult.style.animation = '';
+        diceResult.style.transform = '';
+
+        // 添加滚动动画
+        dice.classList.add('rolling');
+
+        // 生成随机数
+        const randomNum = Math.floor(Math.random() * maxNum) + 1;
+
+        // 动画结束后显示结果
+        setTimeout(() => {
+            dice.classList.remove('rolling');
+            diceResult.textContent = randomNum;
+            
+            // 添加结果出现动画
+            diceResult.style.animation = 'resultPop 0.5s ease-out';
+            setTimeout(() => {
+                diceResult.style.animation = '';
+            }, 500);
+            
+            isDiceRolling = false;
+            
+            // 显示结果提示
+            showToast('骰子结果：' + randomNum + ' (1-' + maxNum + ')', 'success');
+        }, 1500);
+    }
+
+    // 添加结果弹出动画样式
+    const resultStyle = document.createElement('style');
+    resultStyle.textContent = `
+        @keyframes resultPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(resultStyle);
 </script>
 
 </body>
