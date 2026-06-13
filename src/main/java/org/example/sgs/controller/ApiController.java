@@ -307,11 +307,11 @@ public class ApiController {
         Map<String, Object> result = new LinkedHashMap<>();
         String[] testPaths = {
             "static/index.html",
-            "static/images/cards/wei/曹操.png",
-            "static/images/cards/wei/乐进.png",
-            "static/images/cards/shu/刘备.png",
-            "static/images/cards/wu/孙尚香.png",
-            "static/images/cards/qun/貂蝉.png"
+            "static/images/cards/wei/caocao.png",
+            "static/images/cards/wei/yuejin.png",
+            "static/images/cards/shu/liubei.png",
+            "static/images/cards/wu/sunshangxiang.png",
+            "static/images/cards/qun/diaochan.png"
         };
         int found = 0;
         for (String path : testPaths) {
