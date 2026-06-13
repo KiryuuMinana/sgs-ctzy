@@ -8,6 +8,7 @@ import org.example.sgs.model.GeneralCard;
 import org.example.sgs.model.PresetDeck;
 import org.example.sgs.service.SimulationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -296,6 +297,38 @@ public class ApiController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "模拟已重置");
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 诊断接口：检查静态资源是否存在
+     */
+    @GetMapping("/debug/resources")
+    public ResponseEntity<?> checkResources() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String[] testPaths = {
+            "static/index.html",
+            "static/images/cards/wei/曹操.png",
+            "static/images/cards/wei/乐进.png",
+            "static/images/cards/shu/刘备.png",
+            "static/images/cards/wu/孙尚香.png",
+            "static/images/cards/qun/貂蝉.png"
+        };
+        int found = 0;
+        for (String path : testPaths) {
+            try {
+                ClassPathResource res = new ClassPathResource(path);
+                boolean exists = res.exists();
+                long size = exists ? res.contentLength() : -1;
+                result.put(path, exists ? "EXISTS (" + size + " bytes)" : "NOT FOUND");
+                if (exists) found++;
+            } catch (Exception e) {
+                result.put(path, "ERROR: " + e.getMessage());
+            }
+        }
+        result.put("summary", found + "/" + testPaths.length + " resources found");
+        result.put("file.encoding", System.getProperty("file.encoding"));
+        result.put("default.charset", java.nio.charset.Charset.defaultCharset().name());
+        return ResponseEntity.ok(result);
     }
 
     /**
